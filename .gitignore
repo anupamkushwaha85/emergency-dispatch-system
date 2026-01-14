@@ -1,0 +1,43 @@
+# =========================
+# IntelliJ IDEA
+# =========================
+.idea/
+*.iml
+
+# =========================
+# Build artifacts
+# =========================
+/target/
+out/
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+application-local.properties
+application-dev.properties
+application-prod.properties
+
+# =========================
+# Database (local only)
+# =========================
+*.db
+*.mv.db
+*.trace.db
+
+# =========================
+# Temporary / cache
+# =========================
+tmp/
