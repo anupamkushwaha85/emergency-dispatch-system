@@ -1,6 +1,7 @@
 package com.hackathon.emergency108.controller;
 
 
+import com.hackathon.emergency108.auth.guard.AuthGuard;
 import com.hackathon.emergency108.dto.EmergencyTimelineEvent;
 import com.hackathon.emergency108.entity.Ambulance;
 import com.hackathon.emergency108.entity.Emergency;
@@ -35,6 +36,8 @@ public class EmergencyController {
 
     private final DomainMetrics metrics;
 
+    private final AuthGuard authGuard;
+
     private final SystemReadiness systemReadiness;
     private final EmergencyTimelineService emergencyTimelineService;
     private final EmergencyAssignmentService assignmentService;
@@ -48,7 +51,9 @@ public class EmergencyController {
                                EmergencyAssignmentService assignmentService,
                                EmergencyTimelineService emergencyTimelineService,
                                SystemReadiness systemReadiness,
-                               DomainMetrics metrics) {
+                               DomainMetrics metrics,
+                               AuthGuard authGuard) {
+        this.authGuard = authGuard;
         this.metrics = metrics;
         this.systemReadiness = systemReadiness;
         this.emergencyTimelineService = emergencyTimelineService;
@@ -72,6 +77,8 @@ public class EmergencyController {
     @Transactional
     @PostMapping("/{id}/dispatch")
     public ResponseEntity<Ambulance> dispatch(@PathVariable Long id) {
+
+        authGuard.requireAuthenticated();
         metrics.dispatchAttempt();
         Timer.Sample sample = metrics.startDispatchTimer();
 
@@ -131,6 +138,14 @@ public class EmergencyController {
             @PathVariable Long id,
             @PathVariable Long ambulanceId
     ) {
+
+        authGuard.requireVerifiedDriver();
+        if (!systemReadiness.isReady()) {
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "System recovering, retry shortly"
+            );
+        }
         Emergency emergency = emergencyRepository.findById(id)
                 .orElseThrow();
 
@@ -146,6 +161,7 @@ public class EmergencyController {
 
     @GetMapping("/{id}/timeline")
     public List<EmergencyTimelineEvent> timeline(@PathVariable Long id) {
+        authGuard.requireAuthenticated();
         return emergencyTimelineService.getTimeline(id);
     }
 
@@ -161,6 +177,8 @@ public class EmergencyController {
             );
         }
 
+        authGuard.requireVerifiedDriver();
+
         assignmentService.respondToAssignment(id, accepted);
         return ResponseEntity.ok().build();
     }
@@ -175,6 +193,8 @@ public class EmergencyController {
                     "System recovering, retry shortly"
             );
         }
+
+        authGuard.requireVerifiedDriver();
 
         assignmentService.completeEmergency(id);
 

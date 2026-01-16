@@ -1,5 +1,6 @@
 package com.hackathon.emergency108.controller;
 
+import com.hackathon.emergency108.auth.guard.AuthGuard;
 import com.hackathon.emergency108.entity.Ambulance;
 import com.hackathon.emergency108.repository.AmbulanceRepository;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,9 +14,12 @@ import java.util.List;
 public class AmbulanceController {
 
     private final AmbulanceRepository ambulanceRepository;
+    private final AuthGuard authGuard;
 
-    public AmbulanceController(AmbulanceRepository ambulanceRepository) {
+    public AmbulanceController(AmbulanceRepository ambulanceRepository,
+                               AuthGuard authGuard) {
         this.ambulanceRepository = ambulanceRepository;
+        this.authGuard = authGuard;
     }
 
     @GetMapping
