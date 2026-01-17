@@ -67,6 +67,9 @@ public class EmergencyController {
 
     @PostMapping
     public Emergency createEmergency(@RequestBody Emergency emergency) {
+
+        authGuard.requireAuthenticated(); // 🔐 REQUIRED
+
         emergency.setStatus(EmergencyStatus.CREATED);
         return emergencyRepository.save(emergency);
     }

@@ -39,7 +39,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private VerificationStatus verificationStatus;
+    private DriverVerificationStatus driververificationStatus;
 
 
     @Column(nullable = false)
@@ -91,12 +91,12 @@ public class User {
         this.role = role;
     }
 
-    public VerificationStatus getVerificationStatus() {
-        return verificationStatus;
+    public DriverVerificationStatus getDriverVerificationStatus() {
+        return driververificationStatus;
     }
 
-    public void setVerificationStatus(VerificationStatus verificationStatus) {
-        this.verificationStatus = verificationStatus;
+    public void setDriverVerificationStatus(DriverVerificationStatus verificationStatus) {
+        this.driververificationStatus = verificationStatus;
     }
 
     public boolean isActive() {

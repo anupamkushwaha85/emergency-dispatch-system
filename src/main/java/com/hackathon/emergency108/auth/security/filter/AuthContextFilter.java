@@ -1,8 +1,14 @@
 package com.hackathon.emergency108.auth.security.filter;
 
+import com.hackathon.emergency108.auth.exception.UnauthenticatedException;
 import com.hackathon.emergency108.auth.security.AuthContext;
 import com.hackathon.emergency108.auth.security.AuthUserPrincipal;
+import com.hackathon.emergency108.auth.token.AuthTokenPayload;
+import com.hackathon.emergency108.auth.token.TokenService;
+import com.hackathon.emergency108.entity.DriverVerificationStatus;
+import com.hackathon.emergency108.entity.User;
 import com.hackathon.emergency108.entity.UserRole;
+import com.hackathon.emergency108.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +25,15 @@ import java.io.IOException;
 @Component
 public class AuthContextFilter extends OncePerRequestFilter {
 
+    private final TokenService tokenService;
+
+    private final UserRepository userRepository  ;
+
+    public AuthContextFilter(TokenService tokenService, UserRepository userRepository) {
+        this.userRepository = userRepository;
+        this.tokenService = tokenService;
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -27,22 +42,30 @@ public class AuthContextFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         try {
-            // 🔹 TEMP auth source (safe default)
-            // Later this will come from JWT / OTP token
-            String userIdHeader = request.getHeader("X-USER-ID");
-            String roleHeader = request.getHeader("X-USER-ROLE");
+            String authHeader = request.getHeader("Authorization");
 
-            if (userIdHeader != null && roleHeader != null) {
-                Long userId = Long.parseLong(userIdHeader);
-                UserRole role = UserRole.valueOf(roleHeader);
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+
+                String token = authHeader.substring(7);
+
+                AuthTokenPayload payload =
+                        tokenService.validateAndParse(token);
+
+                User user = userRepository.findById(payload.getUserId())
+                        .orElseThrow(UnauthenticatedException::new);
+
+                boolean driverVerified =
+                        user.getRole() == UserRole.DRIVER &&
+                                user.getDriverVerificationStatus() == DriverVerificationStatus.VERIFIED;
 
                 AuthUserPrincipal principal =
                         new AuthUserPrincipal(
-                                userId,
-                                role,
-                                false, // driverVerified (temporary default)
-                                false  // blocked (temporary default)
+                                user.getId(),
+                                user.getRole(),
+                                driverVerified,
+                                user.isBlocked()
                         );
+
 
                 AuthContext.set(principal);
             }
@@ -50,8 +73,8 @@ public class AuthContextFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
 
         } finally {
-            // 🧹 MUST clear context to avoid thread leakage
             AuthContext.clear();
         }
     }
+
 }

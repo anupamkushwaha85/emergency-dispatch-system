@@ -6,7 +6,7 @@ import com.hackathon.emergency108.auth.token.TokenService;
 import com.hackathon.emergency108.entity.DriverVerificationStatus;
 import com.hackathon.emergency108.entity.User;
 import com.hackathon.emergency108.entity.UserRole;
-import com.hackathon.emergency108.entity.VerificationStatus;
+
 import com.hackathon.emergency108.repository.UserRepository;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,7 +54,7 @@ public class PublicAuthController {
                     u.setRole(UserRole.PUBLIC);
                     u.setActive(true);
                     u.setBlocked(false);
-                    u.setVerificationStatus(VerificationStatus.VERIFIED); // REQUIRED
+                    u.setDriverVerificationStatus(DriverVerificationStatus.NOT_REQUIRED); // REQUIRED
                     return userRepository.save(u);
                 });
 

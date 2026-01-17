@@ -22,6 +22,8 @@ public class TokenService {
     private final Key key =
             Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
 
+
+
     public String generate(AuthTokenPayload payload) {
 
         Instant now = Instant.now();
