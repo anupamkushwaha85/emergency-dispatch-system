@@ -23,6 +23,14 @@ public class EmergencyAssignment {
     @JoinColumn(name = "ambulance_id")
     private Ambulance ambulance;
 
+    /**
+     * Which driver accepted and completed this assignment.
+     * References the User table (role = DRIVER).
+     * Set when driver accepts the assignment.
+     */
+    @Column(name = "driver_id")
+    private Long driverId;
+
     @Column(name = "assigned_at", nullable = false)
     private LocalDateTime assignedAt;
 
@@ -104,5 +112,13 @@ public class EmergencyAssignment {
 
     public void setResponseDeadline(LocalDateTime responseDeadline) {
         this.responseDeadline = responseDeadline;
+    }
+
+    public Long getDriverId() {
+        return driverId;
+    }
+
+    public void setDriverId(Long driverId) {
+        this.driverId = driverId;
     }
 }

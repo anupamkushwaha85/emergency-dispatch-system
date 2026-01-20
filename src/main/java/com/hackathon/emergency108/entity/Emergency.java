@@ -23,6 +23,45 @@ public class Emergency {
     @Column(nullable = false)
     private EmergencyStatus status;
 
+    /**
+     * User who created this emergency (patient/bystander).
+     * Used for authorization (tracking, updates).
+     */
+    @Column(name = "user_id")
+    private Long userId;
+
+    /**
+     * Emergency source type for hybrid payment model.
+     * GOVERNMENT: Free service (default)
+     * PRIVATE: Paid service
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false)
+    private EmergencySourceType sourceType = EmergencySourceType.GOVERNMENT;
+
+    /**
+     * Payment status (only applicable for PRIVATE emergencies).
+     * NOT_REQUIRED for GOVERNMENT emergencies.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false)
+    private PaymentStatus paymentStatus = PaymentStatus.NOT_REQUIRED;
+
+    /**
+     * Calculated fare amount for PRIVATE emergencies.
+     * NULL for GOVERNMENT emergencies.
+     */
+    @Column(name = "fare_amount")
+    private Double fareAmount;
+
+    /**
+     * Payment gateway intent/transaction ID.
+     * Used to track payment with Razorpay/Stripe.
+     * NULL for GOVERNMENT emergencies or unpaid PRIVATE.
+     */
+    @Column(name = "payment_intent_id")
+    private String paymentIntentId;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -119,5 +158,53 @@ public class Emergency {
 
     public void setStatusUpdatedAt(LocalDateTime statusUpdatedAt) {
         this.statusUpdatedAt = statusUpdatedAt;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public EmergencySourceType getSourceType() {
+        return sourceType;
+    }
+
+    public void setSourceType(EmergencySourceType sourceType) {
+        this.sourceType = sourceType;
+    }
+
+    public PaymentStatus getPaymentStatus() {
+        return paymentStatus;
+    }
+
+    public void setPaymentStatus(PaymentStatus paymentStatus) {
+        this.paymentStatus = paymentStatus;
+    }
+
+    public Double getFareAmount() {
+        return fareAmount;
+    }
+
+    public void setFareAmount(Double fareAmount) {
+        this.fareAmount = fareAmount;
+    }
+
+    public String getPaymentIntentId() {
+        return paymentIntentId;
+    }
+
+    public void setPaymentIntentId(String paymentIntentId) {
+        this.paymentIntentId = paymentIntentId;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

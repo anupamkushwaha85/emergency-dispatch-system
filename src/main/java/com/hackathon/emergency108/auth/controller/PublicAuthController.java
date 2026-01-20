@@ -1,6 +1,5 @@
 package com.hackathon.emergency108.auth.controller;
 
-import com.hackathon.emergency108.auth.service.OtpService;
 import com.hackathon.emergency108.auth.token.AuthTokenPayload;
 import com.hackathon.emergency108.auth.token.TokenService;
 import com.hackathon.emergency108.entity.DriverVerificationStatus;
@@ -17,54 +16,74 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/legacy")
 public class PublicAuthController {
 
-    private final OtpService otpService;
     private final UserRepository userRepository;
     private final TokenService tokenService;
 
     public PublicAuthController(
-            OtpService otpService,
             UserRepository userRepository,
             TokenService tokenService
     ) {
-        this.otpService = otpService;
         this.userRepository = userRepository;
         this.tokenService = tokenService;
     }
 
-    @PostMapping("/otp/send")
-    public void sendOtp(@RequestParam String phoneOrEmail) {
-        otpService.sendOtp(phoneOrEmail);
-    }
-
-    @PostMapping("/otp/verify")
-    public Map<String, String> verifyOtp(
-            @RequestParam String phoneOrEmail,
-            @RequestParam String code
+    /**
+     * Simple login endpoint for testing - creates user if doesn't exist
+     * Returns permanent JWT token
+     * 
+     * NOTE: DRIVER role users are created as PENDING by default.
+     * They must complete verification process before working.
+     * 
+     * DEPRECATED: Use /api/auth/send-otp and /api/auth/verify-otp instead
+     */
+    @PostMapping("/login")
+    public Map<String, Object> simpleLogin(
+            @RequestParam String phone,
+            @RequestParam(required = false) String role
     ) {
-        otpService.verifyOtp(phoneOrEmail, code);
-
-        User user = userRepository.findByPhone(phoneOrEmail)
+        // Default role to PUBLIC if not specified
+        UserRole userRole = role != null ? UserRole.valueOf(role.toUpperCase()) : UserRole.PUBLIC;
+        
+        // Find or create user
+        User user = userRepository.findByPhone(phone)
                 .orElseGet(() -> {
                     User u = new User();
-                    u.setPhone(phoneOrEmail);
-                    u.setEmail(phoneOrEmail + "@placeholder.local"); // REQUIRED
-                    u.setRole(UserRole.PUBLIC);
+                    u.setPhone(phone);
+                    u.setName("User " + phone);
+                    u.setEmail(phone + "@emergency108.local");
+                    u.setRole(userRole);
                     u.setActive(true);
                     u.setBlocked(false);
-                    u.setDriverVerificationStatus(DriverVerificationStatus.NOT_REQUIRED); // REQUIRED
+                    u.setCreatedAt(LocalDateTime.now());
+                    
+                    // IMPORTANT: Drivers start as PENDING (awaiting verification)
+                    // They must complete document upload and admin verification
+                    if (userRole == UserRole.DRIVER) {
+                        u.setDriverVerificationStatus(DriverVerificationStatus.PENDING);
+                    } else {
+                        u.setDriverVerificationStatus(DriverVerificationStatus.NOT_REQUIRED);
+                    }
+                    
                     return userRepository.save(u);
                 });
 
+        // Generate permanent token
+        String token = tokenService.generate(
+                new AuthTokenPayload(user.getId(), user.getRole())
+        );
 
-
-        String token =
-                tokenService.generate(
-                        new AuthTokenPayload(user.getId(), user.getRole())
-                );
-
-        return Map.of("token", token);
+        return Map.of(
+            "token", token,
+            "user", Map.of(
+                "id", user.getId(),
+                "phone", user.getPhone(),
+                "name", user.getName(),
+                "role", user.getRole().toString(),
+                "verificationStatus", user.getDriverVerificationStatus().toString()
+            )
+        );
     }
 }

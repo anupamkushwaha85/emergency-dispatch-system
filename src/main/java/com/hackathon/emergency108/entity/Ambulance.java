@@ -34,6 +34,29 @@ public class Ambulance {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * Ambulance type for fleet classification.
+     * GOVERNMENT: Free service fleet (default)
+     * PRIVATE: Paid service fleet
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ambulance_type", nullable = false)
+    private AmbulanceType ambulanceType = AmbulanceType.GOVERNMENT;
+
+    /**
+     * Base fare for PRIVATE ambulances.
+     * NULL for GOVERNMENT ambulances.
+     */
+    @Column(name = "base_fare")
+    private Double baseFare;
+
+    /**
+     * Per-kilometer rate for PRIVATE ambulances.
+     * NULL for GOVERNMENT ambulances.
+     */
+    @Column(name = "per_km_rate")
+    private Double perKmRate;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -41,6 +64,14 @@ public class Ambulance {
 
     // getters and setters
 
+    /**
+     * Update ambulance GPS location.
+     */
+    public void updateLocation(double lat, double lng) {
+        this.latitude = lat;
+        this.longitude = lng;
+        this.updatedAt = LocalDateTime.now();
+    }
 
     public Long getId() {
         return id;
@@ -106,6 +137,38 @@ public class Ambulance {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public AmbulanceType getAmbulanceType() {
+        return ambulanceType;
+    }
+
+    public void setAmbulanceType(AmbulanceType ambulanceType) {
+        this.ambulanceType = ambulanceType;
+    }
+
+    public Double getBaseFare() {
+        return baseFare;
+    }
+
+    public void setBaseFare(Double baseFare) {
+        this.baseFare = baseFare;
+    }
+
+    public Double getPerKmRate() {
+        return perKmRate;
+    }
+
+    public void setPerKmRate(Double perKmRate) {
+        this.perKmRate = perKmRate;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }
 

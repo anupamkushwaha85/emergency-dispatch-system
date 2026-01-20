@@ -17,7 +17,8 @@ public class TokenService {
     private static final String SECRET =
             "emergency108-super-secure-secret-key-which-is-long";
 
-    private static final long EXPIRY_MILLIS = 24 * 60 * 60 * 1000;
+    // Token expiry: 100 years (effectively lifetime)
+    private static final long EXPIRY_MILLIS = 100L * 365 * 24 * 60 * 60 * 1000;
 
     private final Key key =
             Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));

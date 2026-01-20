@@ -2,6 +2,7 @@ package com.hackathon.emergency108.metrics;
 
 import com.hackathon.emergency108.resilience.DomainSafety;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,13 @@ public class DomainMetrics {
     private final Counter assignmentTimeout;
     private final Counter startupRecovery;
     private final Counter assignmentCompleted;
+    
+    // Heartbeat and driver metrics
+    private final Counter heartbeatReceived;
+    private final Counter staleDriverDetected;
+    private final Counter driverAutoOffline;
+    private final Counter driverShiftStarted;
+    private final Counter driverShiftEnded;
 
 
     private final Timer dispatchTimer;
@@ -68,6 +76,32 @@ public class DomainMetrics {
                         .description("Number of completed assignments")
                         .register(registry);
 
+        // Heartbeat metrics
+        this.heartbeatReceived =
+                Counter.builder("driver.heartbeat.received")
+                        .description("GPS heartbeats received from drivers")
+                        .register(registry);
+
+        this.staleDriverDetected =
+                Counter.builder("driver.stale.detected")
+                        .description("Drivers detected with stale GPS heartbeat")
+                        .register(registry);
+
+        this.driverAutoOffline =
+                Counter.builder("driver.auto.offline")
+                        .description("Drivers automatically marked OFFLINE due to stale heartbeat")
+                        .register(registry);
+
+        this.driverShiftStarted =
+                Counter.builder("driver.shift.started")
+                        .description("Driver shifts started")
+                        .register(registry);
+
+        this.driverShiftEnded =
+                Counter.builder("driver.shift.ended")
+                        .description("Driver shifts ended")
+                        .register(registry);
+
 
     }
 
@@ -102,6 +136,32 @@ public class DomainMetrics {
             assignmentCompleted::increment
     );
     }
+    
+    // Heartbeat metrics
+    public void heartbeatReceived() { DomainSafety.runSafely(
+            "METRIC_HEARTBEAT_RECEIVED",
+            heartbeatReceived::increment
+    ); }
+    
+    public void staleDriverDetected() { DomainSafety.runSafely(
+            "METRIC_STALE_DRIVER_DETECTED",
+            staleDriverDetected::increment
+    ); }
+    
+    public void driverAutoOffline() { DomainSafety.runSafely(
+            "METRIC_DRIVER_AUTO_OFFLINE",
+            driverAutoOffline::increment
+    ); }
+    
+    public void driverShiftStarted() { DomainSafety.runSafely(
+            "METRIC_DRIVER_SHIFT_STARTED",
+            driverShiftStarted::increment
+    ); }
+    
+    public void driverShiftEnded() { DomainSafety.runSafely(
+            "METRIC_DRIVER_SHIFT_ENDED",
+            driverShiftEnded::increment
+    ); }
 
 
     // ---- timers ----

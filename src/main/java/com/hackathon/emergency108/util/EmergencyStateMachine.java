@@ -25,7 +25,23 @@ public final class EmergencyStateMachine {
 
         ALLOWED_TRANSITIONS.put(
                 EmergencyStatus.DISPATCHED,
-                EnumSet.of(EmergencyStatus.COMPLETED, EmergencyStatus.UNASSIGNED)
+                EnumSet.of(
+                    EmergencyStatus.AT_PATIENT,     // Driver arrived at patient
+                    EmergencyStatus.UNASSIGNED      // Driver canceled/emergency failed
+                )
+        );
+
+        ALLOWED_TRANSITIONS.put(
+                EmergencyStatus.AT_PATIENT,
+                EnumSet.of(
+                    EmergencyStatus.TO_HOSPITAL,    // Patient loaded
+                    EmergencyStatus.UNASSIGNED      // Patient refused/emergency canceled
+                )
+        );
+
+        ALLOWED_TRANSITIONS.put(
+                EmergencyStatus.TO_HOSPITAL,
+                EnumSet.of(EmergencyStatus.COMPLETED) // Patient delivered to hospital
         );
 
         ALLOWED_TRANSITIONS.put(

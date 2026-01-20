@@ -39,7 +39,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private DriverVerificationStatus driververificationStatus;
+    private DriverVerificationStatus driverVerificationStatus;
 
 
     @Column(nullable = false)
@@ -48,6 +48,25 @@ public class User {
     private boolean blocked = false;
 
     private LocalDateTime createdAt;
+
+    // OTP Authentication fields
+    @Column(length = 6)
+    private String otp;
+
+    @Column(name = "otp_generated_at")
+    private LocalDateTime otpGeneratedAt;
+
+    @Column(name = "admin_passkey", length = 8)
+    private String adminPasskey;
+
+    @Column(columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "document_url", length = 500)
+    private String documentUrl;
+
+    @Column(name = "is_profile_complete", nullable = false)
+    private boolean isProfileComplete = false;
 
 
     // getters & setters (write manually or use Lombok later)
@@ -92,11 +111,11 @@ public class User {
     }
 
     public DriverVerificationStatus getDriverVerificationStatus() {
-        return driververificationStatus;
+        return driverVerificationStatus;
     }
 
     public void setDriverVerificationStatus(DriverVerificationStatus verificationStatus) {
-        this.driververificationStatus = verificationStatus;
+        this.driverVerificationStatus = verificationStatus;
     }
 
     public boolean isActive() {
@@ -129,5 +148,53 @@ public class User {
 
     public void setBlocked(boolean blocked) {
         this.blocked = blocked;
+    }
+
+    public String getOtp() {
+        return otp;
+    }
+
+    public void setOtp(String otp) {
+        this.otp = otp;
+    }
+
+    public LocalDateTime getOtpGeneratedAt() {
+        return otpGeneratedAt;
+    }
+
+    public void setOtpGeneratedAt(LocalDateTime otpGeneratedAt) {
+        this.otpGeneratedAt = otpGeneratedAt;
+    }
+
+    public String getAdminPasskey() {
+        return adminPasskey;
+    }
+
+    public void setAdminPasskey(String adminPasskey) {
+        this.adminPasskey = adminPasskey;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getDocumentUrl() {
+        return documentUrl;
+    }
+
+    public void setDocumentUrl(String documentUrl) {
+        this.documentUrl = documentUrl;
+    }
+
+    public boolean isProfileComplete() {
+        return isProfileComplete;
+    }
+
+    public void setProfileComplete(boolean profileComplete) {
+        isProfileComplete = profileComplete;
     }
 }

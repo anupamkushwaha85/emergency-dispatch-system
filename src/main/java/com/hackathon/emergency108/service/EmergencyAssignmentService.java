@@ -1,5 +1,6 @@
 package com.hackathon.emergency108.service;
 
+import com.hackathon.emergency108.auth.security.AuthContext;
 import com.hackathon.emergency108.entity.*;
 import com.hackathon.emergency108.event.AssignmentEvent;
 import com.hackathon.emergency108.event.DomainEventPublisher;
@@ -31,6 +32,7 @@ public class EmergencyAssignmentService {
     private final EmergencyRepository emergencyRepository;
     private final DomainEventPublisher eventPublisher;
     private final DomainMetrics metrics;
+    private final DriverSessionService driverSessionService;
 
     private static final Logger log =
             LoggerFactory.getLogger(EmergencyAssignmentService.class);
@@ -43,13 +45,15 @@ public class EmergencyAssignmentService {
                                       EmergencyDispatchService emergencyDispatchService,
                                       EmergencyRepository emergencyRepository,
                                       DomainEventPublisher eventPublisher,
-                                      DomainMetrics metrics) {
+                                      DomainMetrics metrics,
+                                      DriverSessionService driverSessionService) {
         this.metrics = metrics;
         this.eventPublisher = eventPublisher;
         this.emergencyRepository = emergencyRepository;
         this.emergencyDispatchService = emergencyDispatchService;
         this.ambulanceRepository = ambulanceRepository;
         this.assignmentRepository = assignmentRepository;
+        this.driverSessionService = driverSessionService;
     }
 
     public boolean isAlreadyAssigned(Long emergencyId) {
@@ -269,6 +273,9 @@ public class EmergencyAssignmentService {
             boolean accepted
     ) {
 
+        // 🔐 Get authenticated driver
+        Long driverId = AuthContext.get().getUserId();
+        
         Emergency emergencyFromRepository = emergencyRepository
                 .findById(emergencyId)
                 .orElseThrow();
@@ -294,16 +301,30 @@ public class EmergencyAssignmentService {
             );
         }
 
-
+        // 🔐 VALIDATE: Driver must be operating this ambulance
         Ambulance ambulance = assignment.getAmbulance();
+        if (!driverSessionService.isDriverOperatingAmbulance(driverId, ambulance.getId())) {
+            throw new InvalidAssignmentStateException(
+                String.format(
+                    "You are not authorized to respond to this assignment. " +
+                    "This emergency is assigned to ambulance %s which you are not currently operating.",
+                    ambulance.getCode()
+                )
+            );
+        }
+
         Emergency emergency = assignment.getEmergency();
 
         if (accepted) {
+
+            // 🔐 INVARIANT CHECK: Driver must be ONLINE to accept
+            driverSessionService.validateCanAcceptEmergency(driverId, ambulance.getId());
 
             // ✅ Driver accepted
             validateAssignmentTransition(assignment, EmergencyAssignmentStatus.ACCEPTED);
             assignment.setStatus(EmergencyAssignmentStatus.ACCEPTED);
             assignment.setAcceptedAt(LocalDateTime.now());
+            assignment.setDriverId(driverId); // 🎯 Track which driver accepted
             assignmentRepository.save(assignment);
 
             validateEmergencyTransition(emergency, EmergencyStatus.DISPATCHED);
@@ -311,6 +332,9 @@ public class EmergencyAssignmentService {
             emergencyRepository.save(emergency);
 
             validateAssignmentEmergencyConsistency(assignment, emergency);
+
+            // Mark driver as ON_TRIP (centralized state transition)
+            driverSessionService.markDriverOnTrip(driverId);
 
             eventPublisher.publish(
                     new AssignmentEvent(
@@ -326,10 +350,14 @@ public class EmergencyAssignmentService {
 
         } else {
 
-            // ❌ Driver rejected
+            // 🔐 VALIDATE: Driver can reject from ONLINE status
+            driverSessionService.validateRejection(driverId, ambulance.getId());
+
+            // ❌ Driver rejected (stays ONLINE)
             validateAssignmentTransition(assignment, EmergencyAssignmentStatus.REJECTED);
             assignment.setStatus(EmergencyAssignmentStatus.REJECTED);
             assignment.setRejectedAt(LocalDateTime.now());
+            assignment.setDriverId(driverId); // 🎯 Track which driver rejected
             assignmentRepository.save(assignment);
 
             validateAssignmentEmergencyConsistency(assignment, emergency);
@@ -386,6 +414,9 @@ public class EmergencyAssignmentService {
     @Transactional
     public void completeEmergency(Long emergencyId) {
 
+        // 🔐 Get authenticated driver
+        Long driverId = AuthContext.get().getUserId();
+
         EmergencyAssignment assignment =
                 assignmentRepository
                         .findByEmergencyIdAndStatus(
@@ -401,6 +432,14 @@ public class EmergencyAssignmentService {
         Emergency emergency = assignment.getEmergency();
         Ambulance ambulance = assignment.getAmbulance();
 
+        // 🔐 VALIDATE: Driver must be the one who accepted this assignment
+        if (assignment.getDriverId() != null && !assignment.getDriverId().equals(driverId)) {
+            throw new InvalidAssignmentStateException(
+                "You are not authorized to complete this emergency. " +
+                "It was accepted by a different driver."
+            );
+        }
+
         // 1️⃣ Complete assignment
         validateAssignmentTransition(assignment, EmergencyAssignmentStatus.COMPLETED);
         assignment.setStatus(EmergencyAssignmentStatus.COMPLETED);
@@ -408,11 +447,29 @@ public class EmergencyAssignmentService {
         assignmentRepository.save(assignment);
 
         // 2️⃣ Complete emergency
+        // Production: Only allow completion from TO_HOSPITAL status (patient delivered)
+        if (emergency.getStatus() != EmergencyStatus.TO_HOSPITAL 
+            && emergency.getStatus() != EmergencyStatus.DISPATCHED) {
+            // Allow DISPATCHED for backward compatibility during migration
+            throw new InvalidAssignmentStateException(
+                "Emergency must be in TO_HOSPITAL status to complete. Current: " + emergency.getStatus()
+            );
+        }
+        
         validateEmergencyTransition(emergency, EmergencyStatus.COMPLETED);
         emergency.setStatus(EmergencyStatus.COMPLETED);
         emergencyRepository.save(emergency);
 
         validateAssignmentEmergencyConsistency(assignment, emergency);
+
+        // 3️⃣ Mark driver back as ONLINE (available for next emergency)
+        try {
+            driverSessionService.markDriverOnline(driverId);
+        } catch (Exception e) {
+            log.warn("Failed to mark driver {} as ONLINE after completion: {}", 
+                driverId, e.getMessage());
+            // Don't fail the entire transaction if driver session update fails
+        }
 
         eventPublisher.publish(
                 new AssignmentEvent(
@@ -425,7 +482,7 @@ public class EmergencyAssignmentService {
 
 
 
-        // 3️⃣ Free ambulance
+        // 4️⃣ Free ambulance
         try {
             ambulance.setStatus(AmbulanceStatus.AVAILABLE);
             ambulanceRepository.save(ambulance);
