@@ -457,15 +457,16 @@ public class DriverSessionService {
                 boolean wasOnTrip = session.getStatus() == DriverSessionStatus.ON_TRIP;
                 
                 try {
-                    // Mark session as OFFLINE
-                    session.setStatus(DriverSessionStatus.OFFLINE);
+                    // End session (set session_end_time) without changing status
+                    // This avoids violating uk_active_driver constraint
                     session.setSessionEndTime(LocalDateTime.now());
+                    session.setUpdatedAt(LocalDateTime.now());
                     sessionRepository.save(session);
                     
                     metrics.driverAutoOffline();
                     
                     if (wasOnTrip) {
-                        log.error("🚨 CRITICAL: Driver {} went OFFLINE during active trip! " +
+                        log.error("🚨 CRITICAL: Driver {} session ended during active trip! " +
                                 "Session ID: {}, Ambulance: {}, Last heartbeat: {} seconds ago. " +
                                 "MANUAL INTERVENTION REQUIRED - Emergency may need reassignment.",
                             session.getDriverId(),
@@ -478,7 +479,7 @@ public class DriverSessionService {
                         );
                         driversOnTripCount++;
                     } else {
-                        log.warn("⚠️ Driver {} auto-marked OFFLINE due to stale heartbeat. " +
+                        log.warn("⚠️ Driver {} session ended due to stale heartbeat. " +
                                 "Session ID: {}, Ambulance: {}, Last heartbeat: {}",
                             session.getDriverId(),
                             session.getId(),
@@ -490,7 +491,7 @@ public class DriverSessionService {
                     markedOfflineCount++;
                     
                 } catch (Exception e) {
-                    log.error("Failed to mark stale driver {} as OFFLINE: {}", 
+                    log.error("Failed to end stale driver {} session: {}", 
                         session.getDriverId(), e.getMessage(), e);
                 }
             }
@@ -518,5 +519,24 @@ public class DriverSessionService {
     @Transactional(readOnly = true)
     public List<DriverSession> getDriverHistory(Long driverId) {
         return sessionRepository.findAllByDriverId(driverId);
+    }
+
+    /**
+     * Get driver's active session (non-Optional version).
+     * Returns null if no active session exists.
+     * Used by authorization and cancellation services.
+     */
+    @Transactional(readOnly = true)
+    public DriverSession getActiveSession(Long driverId) {
+        return getCurrentSession(driverId).orElse(null);
+    }
+
+    /**
+     * Save driver session.
+     * Used for status updates during cancellation handling.
+     */
+    @Transactional
+    public DriverSession saveSession(DriverSession session) {
+        return sessionRepository.save(session);
     }
 }

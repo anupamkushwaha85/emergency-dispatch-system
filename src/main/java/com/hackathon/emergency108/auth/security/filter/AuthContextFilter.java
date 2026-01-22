@@ -41,6 +41,9 @@ public class AuthContextFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        // SECURITY CRITICAL: Clear stale context BEFORE and AFTER request
+        AuthContext.clear();
+
         try {
             String authHeader = request.getHeader("Authorization");
 
@@ -62,12 +65,12 @@ public class AuthContextFilter extends OncePerRequestFilter {
                         new AuthUserPrincipal(
                                 user.getId(),
                                 user.getRole(),
-                                driverVerified,
-                                user.isBlocked()
+                                user.isBlocked(),
+                                driverVerified
                         );
 
-
                 AuthContext.set(principal);
+                request.setAttribute("_auth_verified", true);
             }
 
             filterChain.doFilter(request, response);

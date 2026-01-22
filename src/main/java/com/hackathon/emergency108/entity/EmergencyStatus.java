@@ -19,5 +19,6 @@ public enum EmergencyStatus {
     AT_PATIENT,     // Ambulance reached patient location
     TO_HOSPITAL,    // Patient loaded, going to hospital
     COMPLETED,      // Handover done
+    CANCELLED,      // Cancelled by user
     UNASSIGNED      // Rejected/timeout
 }

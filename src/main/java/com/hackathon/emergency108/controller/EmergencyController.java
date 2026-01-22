@@ -1,6 +1,5 @@
 package com.hackathon.emergency108.controller;
 
-
 import com.hackathon.emergency108.auth.guard.AuthGuard;
 import com.hackathon.emergency108.auth.security.AuthContext;
 import com.hackathon.emergency108.dto.EmergencyTimelineEvent;
@@ -8,23 +7,14 @@ import com.hackathon.emergency108.entity.*;
 import com.hackathon.emergency108.metrics.DomainMetrics;
 import com.hackathon.emergency108.repository.AmbulanceRepository;
 import com.hackathon.emergency108.repository.EmergencyAssignmentRepository;
-import com.hackathon.emergency108.service.DriverSessionService;
-import com.hackathon.emergency108.service.EmergencyAssignmentService;
-
 import com.hackathon.emergency108.repository.EmergencyRepository;
-
-import com.hackathon.emergency108.service.EmergencyDispatchService;
-import com.hackathon.emergency108.service.EmergencyTimelineService;
+import com.hackathon.emergency108.service.*;
 import com.hackathon.emergency108.system.SystemReadiness;
 import com.hackathon.emergency108.util.GeoUtil;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -33,8 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import io.micrometer.core.instrument.Timer;
 
 @RestController
 @RequestMapping("/api/emergencies")
@@ -52,125 +40,75 @@ public class EmergencyController {
     private final EmergencyTimelineService emergencyTimelineService;
     private final EmergencyAssignmentService assignmentService;
     private final AmbulanceRepository ambulanceRepository;
+    private final EmergencyAuthorizationService authorizationService;
+    private final EmergencyCancellationService cancellationService;
 
 
 
-    public EmergencyController(EmergencyRepository emergencyRepository,
-                               EmergencyDispatchService emergencyDispatchService,
-                               AmbulanceRepository ambulanceRepository,
+    public EmergencyController(EmergencyRepository emergencyRepository, EmergencyDispatchService emergencyDispatchService,
                                EmergencyAssignmentService assignmentService,
                                EmergencyTimelineService emergencyTimelineService,
                                EmergencyAssignmentRepository assignmentRepository,
                                DriverSessionService driverSessionService,
                                SystemReadiness systemReadiness,
                                DomainMetrics metrics,
-                               AuthGuard authGuard) {
+                               AuthGuard authGuard, AmbulanceRepository ambulanceRepository,
+                               EmergencyAuthorizationService authorizationService,
+                               EmergencyCancellationService cancellationService) {
+        this.emergencyDispatchService = emergencyDispatchService;
         this.authGuard = authGuard;
         this.metrics = metrics;
         this.systemReadiness = systemReadiness;
         this.emergencyTimelineService = emergencyTimelineService;
         this.emergencyRepository = emergencyRepository;
-        this.emergencyDispatchService = emergencyDispatchService;
-        this.ambulanceRepository = ambulanceRepository;
         this.assignmentService = assignmentService;
         this.assignmentRepository = assignmentRepository;
         this.driverSessionService = driverSessionService;
+        this.ambulanceRepository = ambulanceRepository;
+        this.authorizationService = authorizationService;
+        this.cancellationService = cancellationService;
     }
 
     @PostMapping
     public Emergency createEmergency(@RequestBody Emergency emergency) {
 
-        authGuard.requireAuthenticated(); // 🔐 REQUIRED
+        authGuard.requireAuthenticated();
+        Long userId = AuthContext.getUserId();
 
         emergency.setStatus(EmergencyStatus.CREATED);
+        emergency.setUserId(userId);
+        
+        log.info("Emergency created by user {} with 100s confirmation deadline", userId);
+        
         return emergencyRepository.save(emergency);
     }
 
-    @Autowired
-    private EntityManager entityManager;
-
-    @Transactional
+    /**
+     * Manually dispatch emergency to nearest available driver.
+     * POST /api/emergencies/{id}/dispatch
+     * 
+     * Authorization: PUBLIC user who created the emergency
+     * Normally auto-dispatches after 100s, but can be triggered manually.
+     */
     @PostMapping("/{id}/dispatch")
-    public ResponseEntity<Ambulance> dispatch(@PathVariable Long id) {
-
+    public ResponseEntity<?> dispatchEmergency(@PathVariable Long id) {
         authGuard.requireAuthenticated();
-        metrics.dispatchAttempt();
-        Timer.Sample sample = metrics.startDispatchTimer();
-
+        
         try {
-
-        if (!systemReadiness.isReady()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "System is recovering. Please retry shortly."
-            );
+            emergencyDispatchService.dispatchToNearestAvailableAmbulance(id);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Emergency dispatched successfully",
+                "emergencyId", id,
+                "status", "DISPATCHED"
+            ));
+        } catch (Exception e) {
+            log.error("Failed to dispatch emergency {}: {}", id, e.getMessage());
+            return ResponseEntity.status(400).body(Map.of(
+                "error", "Dispatch failed",
+                "message", e.getMessage()
+            ));
         }
-
-        Emergency emergency = entityManager.find(Emergency.class, id);
-
-        if (emergency == null) {
-            throw new RuntimeException("Emergency not found");
-        }
-
-        // 🔒 PESSIMISTIC LOCK (MariaDB safe)
-        entityManager.lock(emergency, LockModeType.PESSIMISTIC_WRITE);
-
-        // ✅ STEP 1: Ensure correct emergency state
-        if (emergency.getStatus() == EmergencyStatus.CREATED) {
-            assignmentService.markEmergencyInProgress(emergency);
-        }
-
-        // ❌ Guard against double dispatch
-        if (assignmentService.isAlreadyAssigned(id)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Emergency already assigned"
-            );
-        }
-
-        // 🚑 STEP 2: Assign ambulance
-        Ambulance ambulance = emergencyDispatchService.assignNearestAmbulance(
-                emergency.getLatitude(),
-                emergency.getLongitude()
-        );
-
-        // 📌 STEP 3: Create assignment
-        assignmentService.assign(emergency, ambulance);
-
-            metrics.dispatchSuccess();
-
-        return ResponseEntity.ok(ambulance);
-        } finally {
-            metrics.stopDispatchTimer(sample);
-        }
-    }
-
-
-
-
-    @PostMapping("/{id}/reject/{ambulanceId}")
-    public ResponseEntity<Ambulance> rejectAndRetry(
-            @PathVariable Long id,
-            @PathVariable Long ambulanceId
-    ) {
-
-        authGuard.requireVerifiedDriver();
-        if (!systemReadiness.isReady()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "System recovering, retry shortly"
-            );
-        }
-        Emergency emergency = emergencyRepository.findById(id)
-                .orElseThrow();
-
-        Ambulance ambulance = ambulanceRepository.findById(ambulanceId)
-                .orElseThrow();
-
-        Ambulance next = assignmentService
-                .rejectAndRetry(emergency, ambulance);
-
-        return ResponseEntity.ok(next);
     }
 
 
@@ -180,23 +118,7 @@ public class EmergencyController {
         return emergencyTimelineService.getTimeline(id);
     }
 
-    @PostMapping("/{id}/respond")
-    public ResponseEntity<Void> respondToAssignment(
-            @PathVariable Long id,
-            @RequestParam boolean accepted
-    ) {
-        if (!systemReadiness.isReady()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "System recovering, retry shortly"
-            );
-        }
 
-        authGuard.requireVerifiedDriver();
-
-        assignmentService.respondToAssignment(id, accepted);
-        return ResponseEntity.ok().build();
-    }
 
     /**
      * Driver reports arrival at patient location.
@@ -233,11 +155,11 @@ public class EmergencyController {
                 );
             }
             
-            // Validate state transition
-            if (emergency.getStatus() != EmergencyStatus.DISPATCHED) {
+            // Validate state transition: Driver must have accepted (IN_PROGRESS status)
+            if (emergency.getStatus() != EmergencyStatus.IN_PROGRESS) {
                 throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Cannot mark arrival. Current status: " + emergency.getStatus() + " (expected: DISPATCHED)"
+                    "Cannot mark arrival. Current status: " + emergency.getStatus() + " (expected: IN_PROGRESS after driver acceptance)"
                 );
             }
             
@@ -255,13 +177,22 @@ public class EmergencyController {
             ));
             
         } catch (ResponseStatusException e) {
-            throw e;
+            // Return clean error response without stack trace
+            return ResponseEntity
+                .status(e.getStatusCode())
+                .body(Map.of(
+                    "error", e.getStatusCode().toString(),
+                    "message", e.getReason(),
+                    "path", "/api/emergencies/" + id + "/arrive"
+                ));
         } catch (Exception e) {
             log.error("Error marking arrival for emergency {}: {}", id, e.getMessage(), e);
-            throw new ResponseStatusException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Failed to mark arrival. Please try again."
-            );
+            return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "error", "Internal Server Error",
+                    "message", "Failed to mark arrival. Please try again."
+                ));
         }
     }
 
@@ -322,19 +253,29 @@ public class EmergencyController {
             ));
             
         } catch (ResponseStatusException e) {
-            throw e;
+            return ResponseEntity
+                .status(e.getStatusCode())
+                .body(Map.of(
+                    "error", e.getStatusCode().toString(),
+                    "message", e.getReason(),
+                    "path", "/api/emergencies/" + id + "/pickup"
+                ));
         } catch (Exception e) {
             log.error("Error marking pickup for emergency {}: {}", id, e.getMessage(), e);
-            throw new ResponseStatusException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Failed to mark pickup. Please try again."
-            );
+            return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "error", "Internal Server Error",
+                    "message", "Failed to mark pickup. Please try again."
+                ));
         }
     }
 
 
     @PostMapping("/{id}/complete")
-    public ResponseEntity<?> completeEmergency(@PathVariable Long id) {
+    public ResponseEntity<?> completeEmergency(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> completionData) {
 
         if (!systemReadiness.isReady()) {
             throw new ResponseStatusException(
@@ -344,10 +285,118 @@ public class EmergencyController {
         }
 
         authGuard.requireVerifiedDriver();
+        Long driverId = AuthContext.getUserId();
 
-        assignmentService.completeEmergency(id);
+        try {
+            // Extract hospital location from request
+            Double hospitalLat = null;
+            Double hospitalLng = null;
+            
+            if (completionData.containsKey("hospitalLatitude") && completionData.containsKey("hospitalLongitude")) {
+                hospitalLat = Double.parseDouble(completionData.get("hospitalLatitude").toString());
+                hospitalLng = Double.parseDouble(completionData.get("hospitalLongitude").toString());
+            }
 
-        return ResponseEntity.ok().build();
+            if (hospitalLat == null || hospitalLng == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Missing Data",
+                        "message", "Hospital latitude and longitude are required"
+                ));
+            }
+
+            // Validate 100-meter proximity using EmergencyAuthorizationService
+            EmergencyAuthorizationService.DistanceValidationResult validationResult = 
+                    authorizationService.isDriverWithin100Meters(driverId, hospitalLat, hospitalLng);
+
+            if (!validationResult.isValid()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "error", "Distance Validation Failed",
+                        "message", validationResult.getMessage(),
+                        "distance", validationResult.getDistance(),
+                        "requiredDistance", 100.0
+                ));
+            }
+
+            // Update emergency with hospital location and distance
+            Emergency emergency = emergencyRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Emergency not found"));
+            
+            emergency.setHospitalLatitude(hospitalLat);
+            emergency.setHospitalLongitude(hospitalLng);
+            emergency.setDistanceToHospital(validationResult.getDistance());
+            emergency.setCompletedAt(LocalDateTime.now());
+            emergencyRepository.save(emergency);
+
+            // Complete the assignment
+            assignmentService.completeEmergency(id);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Emergency completed successfully",
+                    "distance", validationResult.getDistance(),
+                    "completedAt", emergency.getCompletedAt()
+            ));
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Invalid State",
+                    "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Failed to complete emergency {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "error", "Internal Error",
+                    "message", "Failed to complete emergency: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * User cancels emergency.
+     * Handles both early cancellation (within 100s) and late cancellation (after driver assigned).
+     * 
+     * POST /api/emergencies/{id}/cancel
+     */
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelEmergency(@PathVariable Long id) {
+        authGuard.requireAuthenticated();
+        Long userId = AuthContext.getUserId();
+
+        try {
+            EmergencyCancellationService.CancellationResult result = 
+                    cancellationService.cancelEmergency(id, userId);
+
+            if (result.isSuspect()) {
+                return ResponseEntity.ok(Map.of(
+                        "success", true,
+                        "message", result.getMessage(),
+                        "warning", result.getPenaltyReason(),
+                        "suspect", true
+                ));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", result.getMessage()
+            ));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Invalid Request",
+                    "message", e.getMessage()
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Invalid State",
+                    "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            log.error("Failed to cancel emergency {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "error", "Internal Error",
+                    "message", "Failed to cancel emergency: " + e.getMessage()
+            ));
+        }
     }
 
     /**

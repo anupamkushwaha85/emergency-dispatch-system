@@ -42,6 +42,36 @@ and a.status = 'ASSIGNED'
             @Param("emergencyId") Long emergencyId
     );
 
+    /**
+     * Find assignment by emergency ID, driver ID, and status.
+     * Used for authorization checks.
+     */
+    Optional<EmergencyAssignment> findByEmergencyIdAndDriverIdAndStatus(
+            Long emergencyId,
+            Long driverId,
+            EmergencyAssignmentStatus status
+    );
+
+    /**
+     * Find assignment by driver ID and status only.
+     * Used to get current assignment for driver.
+     */
+    Optional<EmergencyAssignment> findByDriverIdAndStatus(
+            Long driverId,
+            EmergencyAssignmentStatus status
+    );
+
+    /**
+     * Find all assignments with timeout deadline passed.
+     * Used by scheduled job to handle driver timeouts.
+     */
+    @Query("""
+select a from EmergencyAssignment a
+where a.status = 'ASSIGNED'
+and a.responseDeadline < :now
+""")
+    List<EmergencyAssignment> findTimedOutAssignments(@Param("now") LocalDateTime now);
+
 
 
 }

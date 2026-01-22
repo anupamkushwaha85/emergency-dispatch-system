@@ -47,6 +47,20 @@ public class User {
 
     private boolean blocked = false;
 
+    /**
+     * Number of times user cancelled emergency after confirmation deadline (100s) or after driver assigned.
+     * Used for monitoring suspect behavior and potential penalties.
+     */
+    @Column(name = "suspect_count", nullable = false)
+    private Integer suspectCount = 0;
+
+    /**
+     * Timestamp of most recent suspect cancellation.
+     * Used for tracking patterns and time-based penalties.
+     */
+    @Column(name = "last_suspect_at")
+    private LocalDateTime lastSuspectAt;
+
     private LocalDateTime createdAt;
 
     // OTP Authentication fields
@@ -196,5 +210,21 @@ public class User {
 
     public void setProfileComplete(boolean profileComplete) {
         isProfileComplete = profileComplete;
+    }
+
+    public Integer getSuspectCount() {
+        return suspectCount;
+    }
+
+    public void setSuspectCount(Integer suspectCount) {
+        this.suspectCount = suspectCount;
+    }
+
+    public LocalDateTime getLastSuspectAt() {
+        return lastSuspectAt;
+    }
+
+    public void setLastSuspectAt(LocalDateTime lastSuspectAt) {
+        this.lastSuspectAt = lastSuspectAt;
     }
 }

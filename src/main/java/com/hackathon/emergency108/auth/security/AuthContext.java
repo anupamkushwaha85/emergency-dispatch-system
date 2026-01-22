@@ -16,6 +16,14 @@ public final class AuthContext {
     }
 
     public static AuthUserPrincipal get() {
+        AuthUserPrincipal principal = CURRENT.get();
+        if (principal == null) {
+            throw new com.hackathon.emergency108.auth.exception.UnauthenticatedException();
+        }
+        return principal;
+    }
+    
+    public static AuthUserPrincipal getOrNull() {
         return CURRENT.get();
     }
 
@@ -28,11 +36,13 @@ public final class AuthContext {
     }
 
     public static Long getUserId() {
-        return CURRENT.get() != null ? CURRENT.get().getUserId() : null;
+        AuthUserPrincipal principal = get(); // This will throw if null
+        return principal.getUserId();
     }
 
     public static boolean hasRole(UserRole role) {
-        return CURRENT.get() != null && CURRENT.get().getRole() == role;
+        AuthUserPrincipal principal = CURRENT.get();
+        return principal != null && principal.getRole() == role;
     }
 
 }

@@ -13,6 +13,9 @@ public interface AmbulanceRepository extends JpaRepository<Ambulance, Long> {
 
     List<Ambulance> findByStatus(AmbulanceStatus status);
 
+    @Query("SELECT a FROM Ambulance a INNER JOIN DriverSession ds ON a.id = ds.ambulanceId WHERE ds.driverId = :driverId AND ds.sessionEndTime IS NULL")
+    java.util.Optional<Ambulance> findByDriverId(Long driverId);
+
     /**
      * Find ambulances available for dispatch.
      * 

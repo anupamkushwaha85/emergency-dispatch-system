@@ -15,8 +15,8 @@ public class Ambulance {
     @Column(nullable = false)
     private String code;
 
-    @Column(name = "driver_name")
-    private String driverName;
+    @Column(name = "driver")
+    private String driver;
 
     @Column(name = "driver_phone")
     private String driverPhone;
@@ -89,12 +89,12 @@ public class Ambulance {
         this.code = code;
     }
 
-    public String getDriverName() {
-        return driverName;
+    public String getDriver() {
+        return driver;
     }
 
-    public void setDriverName(String driverName) {
-        this.driverName = driverName;
+    public void setDriver(String driver) {
+        this.driver = driver;
     }
 
     public String getDriverPhone() {

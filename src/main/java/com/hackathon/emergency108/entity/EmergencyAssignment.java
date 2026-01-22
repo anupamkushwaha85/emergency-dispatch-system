@@ -38,10 +38,29 @@ public class EmergencyAssignment {
     private LocalDateTime rejectedAt;
     private LocalDateTime completedAt;
 
+    /**
+     * When assignment was cancelled (system timeout or emergency cancelled).
+     */
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    /**
+     * Reason for cancellation: DRIVER_TIMEOUT, EMERGENCY_CANCELLED, etc.
+     */
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+
 
 
     @Column(nullable = true)
     private LocalDateTime responseDeadline;
+
+    /**
+     * Time taken by driver to respond (accept/reject) in seconds.
+     * Used for analytics and monitoring driver response times.
+     */
+    @Column(name = "response_time_seconds")
+    private Integer responseTimeSeconds;
 
 
     @Enumerated(EnumType.STRING)
@@ -120,5 +139,29 @@ public class EmergencyAssignment {
 
     public void setDriverId(Long driverId) {
         this.driverId = driverId;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(LocalDateTime cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
+    }
+
+    public Integer getResponseTimeSeconds() {
+        return responseTimeSeconds;
+    }
+
+    public void setResponseTimeSeconds(Integer responseTimeSeconds) {
+        this.responseTimeSeconds = responseTimeSeconds;
     }
 }

@@ -8,12 +8,14 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
+// @Component - DISABLED: AuthContextFilter handles full authentication with DB lookup
+// This filter was overwriting the correct principal with hardcoded false values
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
@@ -42,8 +44,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         new AuthUserPrincipal(
                                 payload.getUserId(),
                                 payload.getRole(),
-                                false, // driverVerified (later)
-                                false  // blocked (later)
+                                false, // blocked - will be loaded from DB if needed
+                                false  // driverVerified - will be loaded from DB if needed
                         );
 
                 AuthContext.set(principal);

@@ -32,9 +32,13 @@ public interface DriverSessionRepository extends JpaRepository<DriverSession, Lo
 
     /**
      * Find all ONLINE drivers (available for assignment)
+     * Must be VERIFIED and have ONLINE session
      */
-    @Query("SELECT ds FROM DriverSession ds WHERE ds.status = 'ONLINE' " +
+    @Query("SELECT ds FROM DriverSession ds, User u " +
+           "WHERE ds.driverId = u.id " +
+           "AND ds.status = 'ONLINE' " +
            "AND ds.sessionEndTime IS NULL " +
+           "AND u.driverVerificationStatus = 'VERIFIED' " +
            "ORDER BY ds.sessionStartTime ASC")
     List<DriverSession> findAllOnlineDrivers();
 

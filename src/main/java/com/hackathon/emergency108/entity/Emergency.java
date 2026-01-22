@@ -62,6 +62,13 @@ public class Emergency {
     @Column(name = "payment_intent_id")
     private String paymentIntentId;
 
+    /**
+     * Suspect cancellation flag.
+     * True if user cancelled emergency after confirmation deadline (100s) or after driver assigned.
+     */
+    @Column(name = "is_suspect_cancellation", nullable = false)
+    private Boolean isSuspectCancellation = false;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -76,14 +83,48 @@ public class Emergency {
 
     private LocalDateTime createdAt;
 
+    /**
+     * User must confirm within 100 seconds after creation.
+     * If not confirmed, emergency is auto-dispatched.
+     */
+    @Column(name = "confirmation_deadline")
+    private LocalDateTime confirmationDeadline;
+
     @Column(name = "status_updated_at")
     private LocalDateTime statusUpdatedAt;
+
+    /**
+     * Timestamp when emergency was marked COMPLETED.
+     */
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    /**
+     * Target hospital latitude coordinate.
+     */
+    @Column(name = "hospital_latitude")
+    private Double hospitalLatitude;
+
+    /**
+     * Target hospital longitude coordinate.
+     */
+    @Column(name = "hospital_longitude")
+    private Double hospitalLongitude;
+
+    /**
+     * Distance in meters when completion was attempted.
+     * Used to validate 100m proximity requirement.
+     */
+    @Column(name = "distance_to_hospital")
+    private Double distanceToHospital;
 
 
     @PrePersist
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.statusUpdatedAt = this.createdAt;
+        // Set confirmation deadline to 100 seconds after creation
+        this.confirmationDeadline = this.createdAt.plusSeconds(100);
     }
 
     // getters & setters
@@ -206,5 +247,53 @@ public class Emergency {
 
     public void setVersion(Long version) {
         this.version = version;
+    }
+
+    public Boolean getIsSuspectCancellation() {
+        return isSuspectCancellation;
+    }
+
+    public void setIsSuspectCancellation(Boolean isSuspectCancellation) {
+        this.isSuspectCancellation = isSuspectCancellation;
+    }
+
+    public LocalDateTime getConfirmationDeadline() {
+        return confirmationDeadline;
+    }
+
+    public void setConfirmationDeadline(LocalDateTime confirmationDeadline) {
+        this.confirmationDeadline = confirmationDeadline;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public Double getHospitalLatitude() {
+        return hospitalLatitude;
+    }
+
+    public void setHospitalLatitude(Double hospitalLatitude) {
+        this.hospitalLatitude = hospitalLatitude;
+    }
+
+    public Double getHospitalLongitude() {
+        return hospitalLongitude;
+    }
+
+    public void setHospitalLongitude(Double hospitalLongitude) {
+        this.hospitalLongitude = hospitalLongitude;
+    }
+
+    public Double getDistanceToHospital() {
+        return distanceToHospital;
+    }
+
+    public void setDistanceToHospital(Double distanceToHospital) {
+        this.distanceToHospital = distanceToHospital;
     }
 }

@@ -6,5 +6,6 @@ public enum EmergencyAssignmentStatus {
     REJECTED,
     TIMEOUT,
     COMPLETED,
-    CANCELLED
+    CANCELLED,
+    CANCELLED_BY_USER
 }

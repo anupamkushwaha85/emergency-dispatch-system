@@ -189,10 +189,10 @@ public class DriverSession {
     }
 
     /**
-     * Check if driver's GPS heartbeat is stale (no update for 30+ seconds).
-     * Stale drivers should be automatically marked OFFLINE.
+     * Check if driver's GPS heartbeat is stale (no update for 1 hour - testing mode).
+     * Used by stale driver detection service to auto-mark drivers OFFLINE.
      * 
-     * @return true if last heartbeat was more than 30 seconds ago or never received
+     * @return true if last heartbeat was more than 1 hour ago or never received
      */
     public boolean isStale() {
         if (lastHeartbeat == null) {
@@ -200,7 +200,7 @@ public class DriverSession {
         }
         
         long secondsSinceLastHeartbeat = Duration.between(lastHeartbeat, LocalDateTime.now()).getSeconds();
-        return secondsSinceLastHeartbeat > 30;
+        return secondsSinceLastHeartbeat > 3600;
     }
 
     /**
