@@ -1,14 +1,13 @@
 package com.hackathon.emergency108.service;
 
-import com.hackathon.emergency108.auth.security.AuthContext;
 import com.hackathon.emergency108.entity.*;
 import com.hackathon.emergency108.event.AssignmentEvent;
 import com.hackathon.emergency108.event.DomainEventPublisher;
 import com.hackathon.emergency108.exception.NoAmbulancesAvailableException;
 import com.hackathon.emergency108.repository.AmbulanceRepository;
-import com.hackathon.emergency108.repository.EmergencyRepository;
-import com.hackathon.emergency108.repository.EmergencyAssignmentRepository;
 import com.hackathon.emergency108.repository.DriverSessionRepository;
+import com.hackathon.emergency108.repository.EmergencyAssignmentRepository;
+import com.hackathon.emergency108.repository.EmergencyRepository;
 import com.hackathon.emergency108.util.GeoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +60,16 @@ public class EmergencyDispatchService {
                 // Find VERIFIED + ONLINE drivers with recent heartbeat
                 List<DriverSession> onlineSessions = driverSessionRepository.findAllOnlineDrivers();
                 log.info("Found {} online sessions from query", onlineSessions.size());
+
+                // Exclude drivers who have already rejected this emergency
+                List<Long> rejectedDriverIds = assignmentRepository.findRejectedDriverIdsByEmergencyId(emergencyId);
+                if (!rejectedDriverIds.isEmpty()) {
+                        log.info("Excluding {} drivers who already rejected emergency {}", rejectedDriverIds.size(),
+                                        emergencyId);
+                        onlineSessions = onlineSessions.stream()
+                                        .filter(session -> !rejectedDriverIds.contains(session.getDriverId()))
+                                        .collect(Collectors.toList());
+                }
 
                 // STATUS CHECK: Must be CREATED before dispatch (Safety check)
                 if (emergency.getStatus() != EmergencyStatus.CREATED) {
