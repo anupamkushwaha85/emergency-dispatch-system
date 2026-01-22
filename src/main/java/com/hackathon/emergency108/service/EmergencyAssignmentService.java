@@ -497,6 +497,10 @@ public class EmergencyAssignmentService {
         assignment.setCancellationReason("Driver manually rejected");
         assignmentRepository.save(assignment);
 
+        // Release driver back to ONLINE status
+        driverSessionService.markDriverOnline(driverId);
+        log.info("Driver {} session released back to ONLINE", driverId);
+
         log.info("Driver {} rejected emergency {}", driverId, emergencyId);
 
         eventPublisher.publish(
@@ -505,6 +509,13 @@ public class EmergencyAssignmentService {
                         assignment.getAmbulance() != null ? assignment.getAmbulance().getId() : null,
                         "ASSIGNMENT_REJECTED",
                         "Driver rejected emergency"));
+
+        // Reset emergency status to CREATED for re-dispatch
+        Emergency emergency = emergencyRepository.findById(emergencyId)
+                .orElseThrow(() -> new IllegalStateException("Emergency not found: " + emergencyId));
+        emergency.setStatus(EmergencyStatus.CREATED);
+        emergencyRepository.saveAndFlush(emergency);
+        log.info("Reset emergency {} status to CREATED for re-dispatch", emergencyId);
 
         // Re-dispatch to next available driver
         try {
