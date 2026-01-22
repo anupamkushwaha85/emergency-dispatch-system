@@ -15,7 +15,8 @@ import java.util.Optional;
 
 /**
  * Service for handling emergency cancellations.
- * Implements early cancellation (within 100s) and late cancellation (after driver assigned) logic.
+ * Implements early cancellation (within 100s) and late cancellation (after
+ * driver assigned) logic.
  */
 @Service
 public class EmergencyCancellationService {
@@ -43,12 +44,14 @@ public class EmergencyCancellationService {
 
     /**
      * Cancel emergency by user.
-     * Determines if it's an early cancellation (within 100s) or late cancellation (after driver assigned).
+     * Determines if it's an early cancellation (within 100s) or late cancellation
+     * (after driver assigned).
      * 
      * @param emergencyId Emergency ID
-     * @param userId User ID (must be emergency creator)
+     * @param userId      User ID (must be emergency creator)
      * @return Cancellation result
-     * @throws IllegalArgumentException if emergency not found or user not authorized
+     * @throws IllegalArgumentException if emergency not found or user not
+     *                                  authorized
      */
     @Transactional
     public CancellationResult cancelEmergency(Long emergencyId, Long userId) {
@@ -93,16 +96,15 @@ public class EmergencyCancellationService {
 
         emergency.setStatus(EmergencyStatus.CANCELLED);
         emergency.setIsSuspectCancellation(false);
-        emergencyRepository.saveAndFlush(emergency);  // CRITICAL: Flush to DB immediately
-        
+        emergencyRepository.saveAndFlush(emergency); // CRITICAL: Flush to DB immediately
+
         logger.info("Emergency {} status updated to CANCELLED in database", emergency.getId());
 
         return new CancellationResult(
                 true,
                 "Emergency cancelled successfully",
                 false,
-                "Early cancellation - no penalty"
-        );
+                "Early cancellation - no penalty");
     }
 
     /**
@@ -125,9 +127,9 @@ public class EmergencyCancellationService {
         if (activeAssignmentOpt.isPresent()) {
             EmergencyAssignment assignment = activeAssignmentOpt.get();
             releaseDriver(assignment);
-            
+
             // Mark assignment as cancelled
-            assignment.setStatus(EmergencyAssignmentStatus.CANCELLED_BY_USER);
+            assignment.setStatus(EmergencyAssignmentStatus.CANCELLED);
             assignment.setCancelledAt(LocalDateTime.now());
             assignment.setCancellationReason("User cancelled emergency after driver assigned");
             assignmentRepository.save(assignment);
@@ -145,8 +147,7 @@ public class EmergencyCancellationService {
                 true,
                 "Emergency cancelled, but you cancelled after driver was assigned",
                 true,
-                "Late cancellation - marked as suspect"
-        );
+                "Late cancellation - marked as suspect");
     }
 
     /**
@@ -190,7 +191,8 @@ public class EmergencyCancellationService {
 
             logger.warn("User {} marked as suspect (total suspect count: {})", userId, user.getSuspectCount());
 
-            // TODO: Implement penalty logic (e.g., temporary suspension after 3 suspect cancellations)
+            // TODO: Implement penalty logic (e.g., temporary suspension after 3 suspect
+            // cancellations)
             if (user.getSuspectCount() >= 3) {
                 logger.error("User {} has {} suspect cancellations - consider suspension",
                         userId, user.getSuspectCount());
@@ -210,8 +212,10 @@ public class EmergencyCancellationService {
      * Check if emergency has active driver assignment.
      */
     private boolean hasActiveDriverAssignment(Long emergencyId) {
-        return assignmentRepository.findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ASSIGNED).isPresent() ||
-                assignmentRepository.findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ACCEPTED).isPresent();
+        return assignmentRepository.findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ASSIGNED)
+                .isPresent() ||
+                assignmentRepository.findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ACCEPTED)
+                        .isPresent();
     }
 
     /**
