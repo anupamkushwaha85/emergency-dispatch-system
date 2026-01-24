@@ -15,24 +15,14 @@ import java.time.LocalDateTime;
  * - Session automatically expires after 24 hours for safety
  */
 @Entity
-@Table(
-    name = "driver_sessions",
-    indexes = {
+@Table(name = "driver_sessions", indexes = {
         @Index(name = "idx_driver_status", columnList = "driver_id, status"),
         @Index(name = "idx_ambulance_status", columnList = "ambulance_id, status"),
         @Index(name = "idx_status_started", columnList = "status, session_start_time")
-    },
-    uniqueConstraints = {
-        @UniqueConstraint(
-            name = "uk_active_driver",
-            columnNames = {"driver_id", "status"}
-        ),
-        @UniqueConstraint(
-            name = "uk_active_ambulance", 
-            columnNames = {"ambulance_id", "status"}
-        )
-    }
-)
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uk_active_driver", columnNames = { "driver_id", "status" }),
+        @UniqueConstraint(name = "uk_active_ambulance", columnNames = { "ambulance_id", "status" })
+})
 public class DriverSession {
 
     @Id
@@ -105,6 +95,7 @@ public class DriverSession {
         this.ambulanceId = ambulanceId;
         this.status = DriverSessionStatus.ONLINE;
         this.sessionStartTime = LocalDateTime.now();
+        this.lastHeartbeat = LocalDateTime.now();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -140,8 +131,7 @@ public class DriverSession {
     public void startTrip() {
         if (this.status != DriverSessionStatus.ONLINE) {
             throw new IllegalStateException(
-                "Cannot start trip: driver is not ONLINE (current: " + this.status + ")"
-            );
+                    "Cannot start trip: driver is not ONLINE (current: " + this.status + ")");
         }
         this.status = DriverSessionStatus.ON_TRIP;
         this.emergenciesHandled++;
@@ -153,8 +143,7 @@ public class DriverSession {
     public void endTrip() {
         if (this.status != DriverSessionStatus.ON_TRIP) {
             throw new IllegalStateException(
-                "Cannot end trip: driver is not ON_TRIP (current: " + this.status + ")"
-            );
+                    "Cannot end trip: driver is not ON_TRIP (current: " + this.status + ")");
         }
         this.status = DriverSessionStatus.ONLINE;
     }
@@ -165,8 +154,7 @@ public class DriverSession {
     public void endSession() {
         if (this.status == DriverSessionStatus.ON_TRIP) {
             throw new IllegalStateException(
-                "Cannot end session: driver is currently ON_TRIP. Complete the trip first."
-            );
+                    "Cannot end session: driver is currently ON_TRIP. Complete the trip first.");
         }
         this.status = DriverSessionStatus.OFFLINE;
         this.sessionEndTime = LocalDateTime.now();
@@ -189,7 +177,8 @@ public class DriverSession {
     }
 
     /**
-     * Check if driver's GPS heartbeat is stale (no update for 1 hour - testing mode).
+     * Check if driver's GPS heartbeat is stale (no update for 1 hour - testing
+     * mode).
      * Used by stale driver detection service to auto-mark drivers OFFLINE.
      * 
      * @return true if last heartbeat was more than 1 hour ago or never received
@@ -198,7 +187,7 @@ public class DriverSession {
         if (lastHeartbeat == null) {
             return true; // No heartbeat ever received
         }
-        
+
         long secondsSinceLastHeartbeat = Duration.between(lastHeartbeat, LocalDateTime.now()).getSeconds();
         return secondsSinceLastHeartbeat > 3600;
     }

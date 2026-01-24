@@ -197,11 +197,19 @@ public class EmergencyAssignmentService {
                             "Assignment timed out"));
 
             try {
+                // BUG FIX: Reset to CREATED so dispatch service accepts it
+                emergency.setStatus(EmergencyStatus.CREATED);
+                emergencyRepository.save(emergency);
+
                 // Re-dispatch to next available driver
                 emergencyDispatchService.dispatchToNearestAvailableAmbulance(emergency.getId());
 
             } catch (RuntimeException ex) {
-                emergency.setStatus(EmergencyStatus.UNASSIGNED);
+                // If dispatch fails (no drivers), keep it as CREATED so it can be picked up
+                // later
+                // or marked UNASSIGNED if that's the intended "pool" state.
+                // Using CREATED ensures it's visible as "New"
+                emergency.setStatus(EmergencyStatus.CREATED);
                 emergency.setStatusUpdatedAt(LocalDateTime.now());
                 emergencyRepository.save(emergency);
             }

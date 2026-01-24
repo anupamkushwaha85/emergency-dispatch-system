@@ -81,24 +81,32 @@ public class EmergencyDispatchService {
                 }
 
                 // Filter for VERIFIED drivers with fresh heartbeat (< 1 hour for testing)
-                LocalDateTime thirtySecondsAgo = LocalDateTime.now().minusSeconds(3600);
+                // We use a 1-hour window explicitly
+                LocalDateTime oneHourAgo = LocalDateTime.now().minusSeconds(3600);
+
                 List<DriverSession> eligibleSessions = onlineSessions.stream()
                                 .filter(session -> {
+                                        // LENIENT CHECK: Handle null heartbeat
                                         if (session.getLastHeartbeat() == null) {
-                                                log.warn("Session {} has null heartbeat - filtering out",
+                                                // If start time is within 1 hour, keep it
+                                                if (session.getSessionStartTime().isAfter(oneHourAgo)) {
+                                                        return true;
+                                                }
+                                                log.warn("Session {} has null heartbeat and old start time - filtering out",
                                                                 session.getId());
                                                 return false;
                                         }
-                                        if (!session.getLastHeartbeat().isAfter(thirtySecondsAgo)) {
-                                                log.warn("Session {} heartbeat is stale ({}) - filtering out",
-                                                                session.getId(), session.getLastHeartbeat());
+                                        if (!session.getLastHeartbeat().isAfter(oneHourAgo)) {
+                                                log.warn("Session {} heartbeat is stale (older than 1h) - filtering out",
+                                                                session.getId());
                                                 return false;
                                         }
                                         return true;
                                 })
                                 .filter(session -> {
                                         if (session.getStatus() != DriverSessionStatus.ONLINE) {
-                                                log.warn("Session {} status is {} not ONLINE - filtering out",
+                                                // Log reduced to debug to reduce noise
+                                                log.debug("Session {} status is {} not ONLINE - filtering out",
                                                                 session.getId(), session.getStatus());
                                                 return false;
                                         }
@@ -106,14 +114,12 @@ public class EmergencyDispatchService {
                                 })
                                 .collect(Collectors.toList());
 
-                log.info("After filtering: {} eligible sessions available for dispatch", eligibleSessions.size());
+                log.info("After filtering: {} eligible sessions (Window: 1 Hour)", eligibleSessions.size());
 
                 if (eligibleSessions.isEmpty()) {
-                        log.error("No VERIFIED + ONLINE drivers available for emergency {}. " +
-                                        "Query returned {} sessions, but all filtered out due to: " +
-                                        "null heartbeat, stale heartbeat (>30s), or non-ONLINE status",
-                                        emergencyId, onlineSessions.size());
-                        throw new NoAmbulancesAvailableException("No verified online drivers available");
+                        log.error("No available drivers found. Checked {} online sessions against 1-hour heartbeat window.",
+                                        onlineSessions.size());
+                        throw new NoAmbulancesAvailableException("No drivers available (Active within last 1 hour)");
                 }
 
                 // Find nearest driver
