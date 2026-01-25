@@ -42,6 +42,7 @@ public class EmergencyController {
     private final AmbulanceRepository ambulanceRepository;
     private final EmergencyAuthorizationService authorizationService;
     private final EmergencyCancellationService cancellationService;
+    private final NotificationService notificationService;
 
     public EmergencyController(EmergencyRepository emergencyRepository,
             EmergencyDispatchService emergencyDispatchService,
@@ -53,7 +54,8 @@ public class EmergencyController {
             DomainMetrics metrics,
             AuthGuard authGuard, AmbulanceRepository ambulanceRepository,
             EmergencyAuthorizationService authorizationService,
-            EmergencyCancellationService cancellationService) {
+            EmergencyCancellationService cancellationService,
+            NotificationService notificationService) {
         this.emergencyDispatchService = emergencyDispatchService;
         this.authGuard = authGuard;
         this.metrics = metrics;
@@ -66,6 +68,84 @@ public class EmergencyController {
         this.ambulanceRepository = ambulanceRepository;
         this.authorizationService = authorizationService;
         this.cancellationService = cancellationService;
+        this.notificationService = notificationService;
+    }
+
+    /**
+     * Set ownership (SELF vs OTHER).
+     * Decision Window: 30 seconds (Soft logic, hard limit in Scheduler).
+     * PUT /api/emergencies/{id}/ownership
+     */
+    @PutMapping("/{id}/ownership")
+    public ResponseEntity<?> setEmergencyOwnership(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        authGuard.requireAuthenticated();
+        String ownershipStr = request.get("emergencyFor");
+
+        if (ownershipStr == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing emergencyFor"));
+        }
+
+        try {
+            EmergencyFor ownership = EmergencyFor.valueOf(ownershipStr.toUpperCase());
+            Emergency emergency = emergencyRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Emergency not found"));
+
+            // Immutable Check: If already set (not UNKNOWN), reject
+            if (emergency.getEmergencyFor() != EmergencyFor.UNKNOWN) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                        "error", "Ownership already decided",
+                        "currentOwnership", emergency.getEmergencyFor()));
+            }
+
+            emergency.setEmergencyFor(ownership);
+
+            if (ownership == EmergencyFor.SELF) {
+                // Trigger Mock Notification immediately
+                notificationService.notifyContacts(emergency);
+            } else if (ownership == EmergencyFor.OTHER) {
+                // Skip notifications
+                emergency.setContactNotificationStatus(ContactNotificationStatus.SKIPPED);
+                emergencyRepository.save(emergency);
+            } else {
+                emergencyRepository.save(emergency);
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "emergencyFor", ownership,
+                    "notificationStatus", emergency.getContactNotificationStatus()));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid EmergencyFor value"));
+        }
+    }
+
+    /**
+     * AI Assessment Update (Advisory).
+     * POST /api/emergencies/{id}/ai-assessment
+     */
+    @PostMapping("/{id}/ai-assessment")
+    public ResponseEntity<?> updateAiAssessment(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+        // Ideally authorize AI Service, for now allow User/Admin
+        authGuard.requireAuthenticated();
+
+        Emergency emergency = emergencyRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Emergency not found"));
+
+        // We store the whole request body or specific field as JSON string
+        // Simplifying to store "assessment" text/json
+        String assessment = request.toString();
+        if (request.containsKey("assessment")) {
+            assessment = request.get("assessment").toString();
+        }
+
+        emergency.setAiAssessment(assessment);
+        // Also update legacy field if needed
+        emergency.setAiDoctorSummary(assessment);
+
+        emergencyRepository.save(emergency);
+
+        return ResponseEntity.ok(Map.of("success", true, "message", "AI Assessment Updated"));
     }
 
     @PostMapping

@@ -23,19 +23,20 @@ public class DriverSessionCleanupService {
     /**
      * Cleanup stale sessions every hour.
      * Sessions older than 24 hours are automatically ended.
+     * Delays first run by 60s to avoid conflict with DriverRevivalRunner.
      */
-    @Scheduled(fixedRate = 3600000) // 1 hour in milliseconds
+    @Scheduled(fixedRateString = "3600000", initialDelayString = "60000")
     public void cleanupStaleSessions() {
         try {
             log.debug("Running driver session cleanup job...");
             int cleaned = driverSessionService.cleanupStaleSessions();
-            
+
             if (cleaned > 0) {
                 log.info("✅ Cleaned up {} stale driver sessions", cleaned);
             } else {
                 log.debug("No stale sessions found");
             }
-            
+
         } catch (Exception e) {
             log.error("❌ Driver session cleanup failed: {}", e.getMessage(), e);
         }

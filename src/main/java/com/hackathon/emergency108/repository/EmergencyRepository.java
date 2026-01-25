@@ -10,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
 public interface EmergencyRepository extends JpaRepository<Emergency, Long> {
 
     List<Emergency> findByStatus(EmergencyStatus status);
@@ -20,11 +19,24 @@ public interface EmergencyRepository extends JpaRepository<Emergency, Long> {
      * Used by scheduled job to auto-dispatch unconfirmed emergencies.
      */
     @Query("""
-select e from Emergency e
-where e.status = 'CREATED'
-and e.confirmationDeadline < :now
-""")
+            select e from Emergency e
+            where e.status = 'CREATED'
+            and e.confirmationDeadline < :now
+            """)
     List<Emergency> findUnconfirmedEmergencies(@Param("now") LocalDateTime now);
 
-}
+    /**
+     * Safety Net: Find emergencies where user hasn't confirmed ownership
+     * (SELF/OTHER)
+     * within the 30s deadline. Auto-defaults to SELF.
+     */
+    @Query("""
+            select e from Emergency e
+            where e.emergencyFor = 'UNKNOWN'
+            and e.contactNotificationStatus = 'PENDING'
+            and e.confirmOwnershipDeadline < :now
+            and e.status != 'CANCELLED'
+            """)
+    List<Emergency> findPendingOwnershipTimeouts(@Param("now") LocalDateTime now);
 
+}
