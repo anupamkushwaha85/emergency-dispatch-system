@@ -11,7 +11,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Column;
 
-
 @Entity
 @Table(name = "users")
 public class User {
@@ -25,7 +24,6 @@ public class User {
     @Column(unique = true)
     private String phone;
 
-
     @Column(unique = true)
     private String email;
 
@@ -35,12 +33,9 @@ public class User {
     @Column(nullable = false)
     private UserRole role;
 
-
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DriverVerificationStatus driverVerificationStatus;
-
 
     @Column(nullable = false)
     private boolean active;
@@ -48,7 +43,8 @@ public class User {
     private boolean blocked = false;
 
     /**
-     * Number of times user cancelled emergency after confirmation deadline (100s) or after driver assigned.
+     * Number of times user cancelled emergency after confirmation deadline (100s)
+     * or after driver assigned.
      * Used for monitoring suspect behavior and potential penalties.
      */
     @Column(name = "suspect_count", nullable = false)
@@ -79,9 +75,11 @@ public class User {
     @Column(name = "document_url", length = 500)
     private String documentUrl;
 
+    @Column(name = "is_helping_hand_enabled")
+    private Boolean isHelpingHandEnabled = true;
+
     @Column(name = "is_profile_complete", nullable = false)
     private boolean isProfileComplete = false;
-
 
     // getters & setters (write manually or use Lombok later)
     public Long getId() {
@@ -210,6 +208,14 @@ public class User {
 
     public void setProfileComplete(boolean profileComplete) {
         isProfileComplete = profileComplete;
+    }
+
+    public boolean isHelpingHandEnabled() {
+        return isHelpingHandEnabled == null || isHelpingHandEnabled;
+    }
+
+    public void setHelpingHandEnabled(boolean helpingHandEnabled) {
+        isHelpingHandEnabled = helpingHandEnabled;
     }
 
     public Integer getSuspectCount() {
