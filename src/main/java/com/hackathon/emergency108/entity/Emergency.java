@@ -145,8 +145,8 @@ public class Emergency {
         this.statusUpdatedAt = this.createdAt;
         // Set confirmation deadline to 100 seconds after creation (Dispatch)
         this.confirmationDeadline = this.createdAt.plusSeconds(100);
-        // Set ownership decision deadline to 30 seconds (Safety Net)
-        this.confirmOwnershipDeadline = this.createdAt.plusSeconds(30);
+        // Set ownership decision deadline to 100 seconds (Safety Net - Auto Dispatch)
+        this.confirmOwnershipDeadline = this.createdAt.plusSeconds(100);
     }
 
     // getters & setters
