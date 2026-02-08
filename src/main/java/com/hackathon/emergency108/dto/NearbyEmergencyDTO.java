@@ -12,15 +12,17 @@ public class NearbyEmergencyDTO {
     private double longitude;
     private double distanceKm;
     private String victimName; // First Name ONLY or "User nearby"
+    private String status;
 
     public NearbyEmergencyDTO(Long id, String type, double latitude, double longitude, double distanceKm,
-            String victimName) {
+            String victimName, String status) {
         this.id = id;
         this.type = type;
         this.latitude = latitude;
         this.longitude = longitude;
         this.distanceKm = distanceKm;
         this.victimName = victimName;
+        this.status = status;
     }
 
     public Long getId() {
@@ -69,5 +71,13 @@ public class NearbyEmergencyDTO {
 
     public void setVictimName(String victimName) {
         this.victimName = victimName;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

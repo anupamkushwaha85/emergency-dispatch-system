@@ -81,6 +81,17 @@ public class User {
     @Column(name = "is_profile_complete", nullable = false)
     private boolean isProfileComplete = false;
 
+    @Column(length = 10)
+    private String gender;
+
+    @Column(name = "date_of_birth")
+    private java.time.LocalDate dateOfBirth;
+
+    private Integer age;
+
+    @Column(name = "blood_group", length = 5)
+    private String bloodGroup;
+
     // getters & setters (write manually or use Lombok later)
     public Long getId() {
         return id;
@@ -232,5 +243,37 @@ public class User {
 
     public void setLastSuspectAt(LocalDateTime lastSuspectAt) {
         this.lastSuspectAt = lastSuspectAt;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public java.time.LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(java.time.LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public void setAge(Integer age) {
+        this.age = age;
+    }
+
+    public String getBloodGroup() {
+        return bloodGroup;
+    }
+
+    public void setBloodGroup(String bloodGroup) {
+        this.bloodGroup = bloodGroup;
     }
 }

@@ -108,7 +108,11 @@ public class HelpingHandService {
                 .filter(e -> {
                     // Rule: Must be SELF (provenance check)
                     if (e.getEmergencyFor() != EmergencyFor.SELF) {
-                        log.debug("  - Emergency {}: Skipped (emergencyFor={})", e.getId(), e.getEmergencyFor());
+                        return false;
+                    }
+
+                    // Rule: Exclude own emergency
+                    if (e.getUserId() != null && e.getUserId().equals(userId)) {
                         return false;
                     }
 
@@ -116,7 +120,6 @@ public class HelpingHandService {
                     double dist = GeoUtil.distanceKm(userLoc.getLatitude(), userLoc.getLongitude(), e.getLatitude(),
                             e.getLongitude());
                     if (dist > radiusKm) {
-                        log.debug("  - Emergency {}: Skipped (Too far: {}km > {}km)", e.getId(), dist, radiusKm);
                         return false;
                     }
 
@@ -142,7 +145,7 @@ public class HelpingHandService {
                         }
                     }
                     return new NearbyEmergencyDTO(e.getId(), e.getType(), e.getLatitude(), e.getLongitude(), dist,
-                            victimName);
+                            victimName, e.getStatus().toString());
                 })
                 .collect(Collectors.toList());
 

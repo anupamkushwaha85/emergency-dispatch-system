@@ -51,9 +51,9 @@ public class OtpAuthController {
 
             // Return response (include OTP only for testing - remove in production)
             OtpResponse response = new OtpResponse(
-                "OTP sent successfully to " + request.getPhone(),
-                request.getPhone(),
-                otp // ⚠️ Remove this in production!
+                    "OTP sent successfully to " + request.getPhone(),
+                    request.getPhone(),
+                    otp // ⚠️ Remove this in production!
             );
 
             return ResponseEntity.ok(response);
@@ -135,10 +135,33 @@ public class OtpAuthController {
             if (request.getLanguage() != null && !request.getLanguage().isEmpty()) {
                 user.setLanguage(request.getLanguage());
             }
+            if (request.getGender() != null && !request.getGender().isEmpty()) {
+                user.setGender(request.getGender());
+            }
+            if (request.getDateOfBirth() != null && !request.getDateOfBirth().isEmpty()) {
+                try {
+                    java.time.LocalDate dob = java.time.LocalDate.parse(request.getDateOfBirth());
+                    user.setDateOfBirth(dob);
+
+                    // Calculate age from DOB
+                    int age = java.time.Period.between(dob, java.time.LocalDate.now()).getYears();
+                    user.setAge(age);
+                    logger.info("📅 DOB set and age calculated: {} years", age);
+                } catch (Exception e) {
+                    logger.error("❌ Invalid date format for DOB: {}", request.getDateOfBirth());
+                }
+            }
+            // Blood group is optional
+            if (request.getBloodGroup() != null && !request.getBloodGroup().isEmpty()
+                    && !request.getBloodGroup().equals("Select")) {
+                user.setBloodGroup(request.getBloodGroup());
+            }
 
             // Mark profile as complete if all required fields are filled
             if (user.getName() != null && !user.getName().startsWith("User ") &&
-                user.getAddress() != null && !user.getAddress().isEmpty()) {
+                    user.getAddress() != null && !user.getAddress().isEmpty() &&
+                    user.getGender() != null && !user.getGender().isEmpty() &&
+                    user.getDateOfBirth() != null) {
                 user.setProfileComplete(true);
             }
 

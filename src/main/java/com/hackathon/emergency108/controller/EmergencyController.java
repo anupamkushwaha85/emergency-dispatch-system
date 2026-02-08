@@ -43,6 +43,7 @@ public class EmergencyController {
     private final EmergencyAuthorizationService authorizationService;
     private final EmergencyCancellationService cancellationService;
     private final NotificationService notificationService;
+    private final AiAssistanceService aiAssistanceService;
 
     public EmergencyController(EmergencyRepository emergencyRepository,
             EmergencyDispatchService emergencyDispatchService,
@@ -55,7 +56,8 @@ public class EmergencyController {
             AuthGuard authGuard, AmbulanceRepository ambulanceRepository,
             EmergencyAuthorizationService authorizationService,
             EmergencyCancellationService cancellationService,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            AiAssistanceService aiAssistanceService) {
         this.emergencyDispatchService = emergencyDispatchService;
         this.authGuard = authGuard;
         this.metrics = metrics;
@@ -69,6 +71,7 @@ public class EmergencyController {
         this.authorizationService = authorizationService;
         this.cancellationService = cancellationService;
         this.notificationService = notificationService;
+        this.aiAssistanceService = aiAssistanceService;
     }
 
     /**
@@ -132,20 +135,33 @@ public class EmergencyController {
         Emergency emergency = emergencyRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Emergency not found"));
 
-        // We store the whole request body or specific field as JSON string
-        // Simplifying to store "assessment" text/json
-        String assessment = request.toString();
-        if (request.containsKey("assessment")) {
-            assessment = request.get("assessment").toString();
+        String assessmentToStore;
+
+        // Check for structured triage data to generate backend-controlled advice
+        // (Source of Truth)
+        if (request.containsKey("triage") && request.get("triage") instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> triageData = (Map<String, Object>) request.get("triage");
+            // Generate standard advice/summary using backend Logic (Rule-Based or AI)
+            assessmentToStore = aiAssistanceService.generateAssistance(emergency.getType(), triageData);
+        } else if (request.containsKey("assessment")) {
+            // Fallback: Use raw text provided by frontend
+            assessmentToStore = request.get("assessment").toString();
+        } else {
+            // Fallback: Dump entire request
+            assessmentToStore = request.toString();
         }
 
-        emergency.setAiAssessment(assessment);
+        emergency.setAiAssessment(assessmentToStore);
         // Also update legacy field if needed
-        emergency.setAiDoctorSummary(assessment);
+        emergency.setAiDoctorSummary(assessmentToStore);
 
         emergencyRepository.save(emergency);
 
-        return ResponseEntity.ok(Map.of("success", true, "message", "AI Assessment Updated"));
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "AI Assessment Updated",
+                "generatedAdvice", assessmentToStore));
     }
 
     @PostMapping
@@ -265,147 +281,15 @@ public class EmergencyController {
         }
     }
 
-    /**
-     * Driver reports patient loaded and starting transport to hospital.
-     * 
-     * POST /api/emergencies/{id}/pickup
-     * 
-     * Transitions: AT_PATIENT → TO_HOSPITAL
-     * 
-     * AUTHORIZATION: Must be the assigned driver
-     */
-    @PostMapping("/{id}/pickup")
-    public ResponseEntity<Map<String, Object>> markPatientPickup(@PathVariable Long id) {
-        authGuard.requireVerifiedDriver();
+    // DEPRECATED: This endpoint has been replaced by POST
+    // /api/driver/mark-patient-picked-up
+    // The new endpoint provides automatic hospital assignment using Haversine
+    // formula
 
-        Long driverId = AuthContext.get().getUserId();
-
-        try {
-            Emergency emergency = emergencyRepository.findById(id)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND,
-                            "Emergency not found: " + id));
-
-            // Verify driver is assigned to this emergency
-            List<EmergencyAssignment> assignments = assignmentRepository.findByEmergencyId(id);
-            boolean isAssignedDriver = assignments.stream()
-                    .anyMatch(a -> driverId.equals(a.getDriverId())
-                            && a.getStatus() == EmergencyAssignmentStatus.ACCEPTED);
-
-            if (!isAssignedDriver) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "You are not assigned to this emergency");
-            }
-
-            // Validate state transition
-            if (emergency.getStatus() != EmergencyStatus.AT_PATIENT) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT,
-                        "Cannot mark pickup. Current status: " + emergency.getStatus() + " (expected: AT_PATIENT)");
-            }
-
-            // Transition to TO_HOSPITAL
-            emergency.setStatus(EmergencyStatus.TO_HOSPITAL);
-            emergencyRepository.save(emergency);
-
-            log.info("Driver {} marked patient pickup for emergency {}", driverId, id);
-
-            return ResponseEntity.ok(Map.of(
-                    "message", "Patient loaded, en route to hospital",
-                    "emergencyId", id,
-                    "status", "TO_HOSPITAL",
-                    "timestamp", LocalDateTime.now()));
-
-        } catch (ResponseStatusException e) {
-            return ResponseEntity
-                    .status(e.getStatusCode())
-                    .body(Map.of(
-                            "error", e.getStatusCode().toString(),
-                            "message", e.getReason(),
-                            "path", "/api/emergencies/" + id + "/pickup"));
-        } catch (Exception e) {
-            log.error("Error marking pickup for emergency {}: {}", id, e.getMessage(), e);
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                            "error", "Internal Server Error",
-                            "message", "Failed to mark pickup. Please try again."));
-        }
-    }
-
-    @PostMapping("/{id}/complete")
-    public ResponseEntity<?> completeEmergency(
-            @PathVariable Long id,
-            @RequestBody Map<String, Object> completionData) {
-
-        if (!systemReadiness.isReady()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "System recovering, retry shortly");
-        }
-
-        authGuard.requireVerifiedDriver();
-        Long driverId = AuthContext.getUserId();
-
-        try {
-            // Extract hospital location from request
-            Double hospitalLat = null;
-            Double hospitalLng = null;
-
-            if (completionData.containsKey("hospitalLatitude") && completionData.containsKey("hospitalLongitude")) {
-                hospitalLat = Double.parseDouble(completionData.get("hospitalLatitude").toString());
-                hospitalLng = Double.parseDouble(completionData.get("hospitalLongitude").toString());
-            }
-
-            if (hospitalLat == null || hospitalLng == null) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Missing Data",
-                        "message", "Hospital latitude and longitude are required"));
-            }
-
-            // Validate 100-meter proximity using EmergencyAuthorizationService
-            EmergencyAuthorizationService.DistanceValidationResult validationResult = authorizationService
-                    .isDriverWithin100Meters(driverId, hospitalLat, hospitalLng);
-
-            if (!validationResult.isValid()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Distance Validation Failed",
-                        "message", validationResult.getMessage(),
-                        "distance", validationResult.getDistance(),
-                        "requiredDistance", 100.0));
-            }
-
-            // Update emergency with hospital location and distance
-            Emergency emergency = emergencyRepository.findById(id)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Emergency not found"));
-
-            emergency.setHospitalLatitude(hospitalLat);
-            emergency.setHospitalLongitude(hospitalLng);
-            emergency.setDistanceToHospital(validationResult.getDistance());
-            emergency.setCompletedAt(LocalDateTime.now());
-            emergencyRepository.save(emergency);
-
-            // Complete the assignment
-            assignmentService.completeEmergency(id);
-
-            return ResponseEntity.ok(Map.of(
-                    "success", true,
-                    "message", "Emergency completed successfully",
-                    "distance", validationResult.getDistance(),
-                    "completedAt", emergency.getCompletedAt()));
-
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Invalid State",
-                    "message", e.getMessage()));
-        } catch (Exception e) {
-            log.error("Failed to complete emergency {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "error", "Internal Error",
-                    "message", "Failed to complete emergency: " + e.getMessage()));
-        }
-    }
+    // DEPRECATED: This endpoint has been replaced by POST
+    // /api/driver/complete-mission
+    // The new endpoint uses auto-assigned hospital and provides better error
+    // messages
 
     /**
      * User cancels emergency.
@@ -415,12 +299,21 @@ public class EmergencyController {
      * POST /api/emergencies/{id}/cancel
      */
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelEmergency(@PathVariable Long id) {
+    public ResponseEntity<?> cancelEmergency(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> payload) {
+
         authGuard.requireAuthenticated();
         Long userId = AuthContext.getUserId();
+        String reason = null;
+
+        if (payload != null && payload.containsKey("reason")) {
+            reason = payload.get("reason");
+        }
 
         try {
-            EmergencyCancellationService.CancellationResult result = cancellationService.cancelEmergency(id, userId);
+            EmergencyCancellationService.CancellationResult result = cancellationService.cancelEmergency(id, userId,
+                    reason);
 
             if (result.isSuspect()) {
                 return ResponseEntity.ok(Map.of(

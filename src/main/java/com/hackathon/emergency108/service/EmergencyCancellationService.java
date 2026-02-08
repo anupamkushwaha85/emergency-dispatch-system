@@ -54,7 +54,7 @@ public class EmergencyCancellationService {
      *                                  authorized
      */
     @Transactional
-    public CancellationResult cancelEmergency(Long emergencyId, Long userId) {
+    public CancellationResult cancelEmergency(Long emergencyId, Long userId, String reason) {
         // Find emergency
         Optional<Emergency> emergencyOpt = emergencyRepository.findById(emergencyId);
         if (emergencyOpt.isEmpty()) {
@@ -83,7 +83,7 @@ public class EmergencyCancellationService {
             return handleEarlyCancellation(emergency, userId);
         } else {
             // LATE CANCELLATION: After 100s or driver already assigned
-            return handleLateCancellation(emergency, userId);
+            return handleLateCancellation(emergency, userId, reason);
         }
     }
 
@@ -111,7 +111,7 @@ public class EmergencyCancellationService {
      * Handle late cancellation (after 100 seconds or driver already assigned).
      * User is marked as suspect.
      */
-    private CancellationResult handleLateCancellation(Emergency emergency, Long userId) {
+    private CancellationResult handleLateCancellation(Emergency emergency, Long userId, String reason) {
         logger.warn("Late cancellation by user {} for emergency {} (status: {})",
                 userId, emergency.getId(), emergency.getStatus());
 
@@ -131,7 +131,10 @@ public class EmergencyCancellationService {
             // Mark assignment as cancelled
             assignment.setStatus(EmergencyAssignmentStatus.CANCELLED);
             assignment.setCancelledAt(LocalDateTime.now());
-            assignment.setCancellationReason("User cancelled emergency after driver assigned");
+            // Use provided reason or fallback
+            assignment.setCancellationReason(reason != null && !reason.isBlank()
+                    ? reason
+                    : "User cancelled emergency after driver assigned");
             assignmentRepository.save(assignment);
         }
 

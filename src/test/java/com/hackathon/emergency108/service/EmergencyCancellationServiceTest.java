@@ -111,7 +111,7 @@ class EmergencyCancellationServiceTest {
 
         // Act
         EmergencyCancellationService.CancellationResult result = cancellationService.cancelEmergency(emergencyId,
-                userId);
+                userId, "Mistakenly created");
 
         // Assert
         assertTrue(result.isSuccess());

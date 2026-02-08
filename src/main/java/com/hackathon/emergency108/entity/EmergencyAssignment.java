@@ -11,8 +11,6 @@ public class EmergencyAssignment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-
-
     // Which emergency
     @ManyToOne(optional = false)
     @JoinColumn(name = "emergency_id")
@@ -50,7 +48,13 @@ public class EmergencyAssignment {
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 
-
+    /**
+     * Destination hospital assigned when patient is picked up.
+     * Selected automatically as the nearest hospital to patient location.
+     */
+    @ManyToOne
+    @JoinColumn(name = "destination_hospital_id")
+    private Hospital destinationHospital;
 
     @Column(nullable = true)
     private LocalDateTime responseDeadline;
@@ -62,7 +66,6 @@ public class EmergencyAssignment {
     @Column(name = "response_time_seconds")
     private Integer responseTimeSeconds;
 
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EmergencyAssignmentStatus status;
@@ -71,10 +74,7 @@ public class EmergencyAssignment {
     @Column(nullable = false)
     private Long version;
 
-
-
     // ---- lifecycle hook ----
-
 
     // ---- getters & setters ----
 
@@ -102,19 +102,33 @@ public class EmergencyAssignment {
         return assignedAt;
     }
 
-    public  EmergencyAssignmentStatus getStatus() {
+    public EmergencyAssignmentStatus getStatus() {
         return status;
     }
 
-    public LocalDateTime getAcceptedAt() { return acceptedAt; }
-    public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
+    public LocalDateTime getAcceptedAt() {
+        return acceptedAt;
+    }
 
-    public LocalDateTime getRejectedAt() { return rejectedAt; }
-    public void setRejectedAt(LocalDateTime rejectedAt) { this.rejectedAt = rejectedAt; }
+    public void setAcceptedAt(LocalDateTime acceptedAt) {
+        this.acceptedAt = acceptedAt;
+    }
 
-    public LocalDateTime getCompletedAt() { return completedAt; }
-    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+    public LocalDateTime getRejectedAt() {
+        return rejectedAt;
+    }
 
+    public void setRejectedAt(LocalDateTime rejectedAt) {
+        this.rejectedAt = rejectedAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
 
     public void setStatus(EmergencyAssignmentStatus status) {
         this.status = status;
@@ -123,7 +137,6 @@ public class EmergencyAssignment {
     public void setAssignedAt(LocalDateTime assignedAt) {
         this.assignedAt = assignedAt;
     }
-
 
     public LocalDateTime getResponseDeadline() {
         return responseDeadline;
@@ -163,5 +176,13 @@ public class EmergencyAssignment {
 
     public void setResponseTimeSeconds(Integer responseTimeSeconds) {
         this.responseTimeSeconds = responseTimeSeconds;
+    }
+
+    public Hospital getDestinationHospital() {
+        return destinationHospital;
+    }
+
+    public void setDestinationHospital(Hospital destinationHospital) {
+        this.destinationHospital = destinationHospital;
     }
 }
