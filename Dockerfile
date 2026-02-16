@@ -9,8 +9,8 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
-# Copy Firebase config from the BUILD stage (reliable)
-COPY --from=build /app/src/main/resources/firebase-service-account.json ./firebase-service-account.json
+# Firebase credentials handled via ENVIRONMENT VARIABLE (FIREBASE_SERVICE_ACCOUNT_BASE64)
+# No need to copy the file anymore.
 # We also need to make sure the app knows where to look if it's not on classpath root,
 # but usually initializing from classpath works if it is in resources.
 # However, `ClassPathResource` looks in the JAR.
