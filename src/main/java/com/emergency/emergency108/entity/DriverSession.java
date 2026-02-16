@@ -189,7 +189,7 @@ public class DriverSession {
         }
 
         long secondsSinceLastHeartbeat = Duration.between(lastHeartbeat, LocalDateTime.now()).getSeconds();
-        return secondsSinceLastHeartbeat > 3600;
+        return secondsSinceLastHeartbeat > 15;
     }
 
     /**

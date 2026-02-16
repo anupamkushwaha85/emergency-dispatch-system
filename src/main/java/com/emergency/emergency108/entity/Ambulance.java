@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 @Table(name = "ambulances")
 public class Ambulance {
 
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,6 +19,9 @@ public class Ambulance {
 
     @Column(name = "driver_phone")
     private String driverPhone;
+
+    @Column(name = "license_plate", nullable = false)
+    private String licensePlate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -60,7 +62,6 @@ public class Ambulance {
     @Version
     @Column(nullable = false)
     private Long version;
-
 
     // getters and setters
 
@@ -105,6 +106,14 @@ public class Ambulance {
         this.driverPhone = driverPhone;
     }
 
+    public String getLicensePlate() {
+        return licensePlate;
+    }
+
+    public void setLicensePlate(String licensePlate) {
+        this.licensePlate = licensePlate;
+    }
+
     public AmbulanceStatus getStatus() {
         return status;
     }
@@ -113,7 +122,6 @@ public class Ambulance {
         this.status = status;
         this.updatedAt = LocalDateTime.now();
     }
-
 
     public Double getLatitude() {
         return latitude;
@@ -171,4 +179,3 @@ public class Ambulance {
         this.version = version;
     }
 }
-

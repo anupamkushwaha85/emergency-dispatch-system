@@ -1,0 +1,1954 @@
+{
+  "info": {
+    "_postman_id": "adf82d53-fa18-4c1b-8c1b-31fc1a20609d",
+    "name": "Emergency 108 - Complete Testing Suite",
+    "description": "Complete API testing collection for Emergency 108 system with OTP authentication, emergency lifecycle, and driver operations. Port: 8081. Based on FINAL_COMPLETE_VERIFICATION.md",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "41766495"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "1.1 PUBLIC User - Send OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"OTP sent successfully\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include(\"OTP sent\");",
+                  "    if (jsonData.otpSent) {",
+                  "        pm.environment.set(\"public_otp\", jsonData.otpSent);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"role\": \"PUBLIC\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/send-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Send OTP to PUBLIC user. System auto-creates user if doesn't exist."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 PUBLIC User - Verify OTP & Get Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token received\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.environment.set(\"public_token\", jsonData.token);",
+                  "    pm.environment.set(\"public_user_id\", jsonData.userId);",
+                  "    pm.expect(jsonData.role).to.eql(\"PUBLIC\");",
+                  "    pm.expect(jsonData.verificationStatus).to.eql(\"NOT_REQUIRED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"otp\": \"{{public_otp}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verify OTP and receive 100-year JWT token. PUBLIC users don't need verification."
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 DRIVER User - Send OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"OTP sent successfully\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include(\"OTP sent\");",
+                  "    if (jsonData.otpSent) {",
+                  "        pm.environment.set(\"driver_otp\", jsonData.otpSent);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876500001\",\n  \"role\": \"DRIVER\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/send-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Send OTP to VERIFIED driver (phone: 9876500001)"
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 DRIVER User - Verify OTP & Get Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token received\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.environment.set(\"driver_token\", jsonData.token);",
+                  "    pm.environment.set(\"driver_user_id\", jsonData.userId);",
+                  "    pm.expect(jsonData.role).to.eql(\"DRIVER\");",
+                  "    pm.expect(jsonData.verificationStatus).to.eql(\"VERIFIED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876500001\",\n  \"otp\": \"{{driver_otp}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verify OTP for VERIFIED driver. This driver can accept emergencies immediately."
+          },
+          "response": []
+        },
+        {
+          "name": "1.5 ADMIN User - Send OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"OTP sent successfully\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include(\"OTP sent\");",
+                  "    if (jsonData.otpSent) {",
+                  "        pm.environment.set(\"admin_otp\", jsonData.otpSent);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9999999999\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/send-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Send OTP to ADMIN user. Admin requires passkey in addition to OTP."
+          },
+          "response": []
+        },
+        {
+          "name": "1.6 ADMIN User - Verify OTP with Passkey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token received\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.environment.set(\"admin_token\", jsonData.token);",
+                  "    pm.environment.set(\"admin_user_id\", jsonData.userId);",
+                  "    pm.expect(jsonData.role).to.eql(\"ADMIN\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9999999999\",\n  \"otp\": \"{{admin_otp}}\",\n  \"adminPasskey\": \"12345678\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verify OTP with 8-digit admin passkey (12345678). Admin authentication requires both OTP and passkey."
+          },
+          "response": []
+        },
+        {
+          "name": "1.7 Self-Register NEW User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"New user auto-created\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include(\"OTP sent\");",
+                  "    if (jsonData.otpSent) {",
+                  "        pm.environment.set(\"new_user_otp\", jsonData.otpSent);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"7777777777\",\n  \"role\": \"PUBLIC\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/send-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Test self-registration: User doesn't exist in DB, system auto-creates. No manual DB entry needed!"
+          },
+          "response": []
+        },
+        {
+          "name": "1.8 NEGATIVE - Admin Wrong Passkey",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message correct\", function () {",
+                  "    var responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.include(\"Invalid admin passkey\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9999999999\",\n  \"otp\": \"{{admin_otp}}\",\n  \"adminPasskey\": \"99999999\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "NEGATIVE TEST: Wrong admin passkey should fail with 401"
+          },
+          "response": []
+        }
+      ],
+      "description": "All authentication tests for 3 user types: PUBLIC, DRIVER, ADMIN"
+    },
+    {
+      "name": "2. Emergency Lifecycle",
+      "item": [
+        {
+          "name": "2.1 Create Emergency (PUBLIC)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency created with 100s deadline\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"CREATED\");",
+                  "    pm.expect(jsonData.confirmationDeadline).to.exist;",
+                  "    pm.environment.set(\"emergency_id\", jsonData.id);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{public_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 28.6139,\n  \"longitude\": 77.2090,\n  \"description\": \"Chest pain, cardiac emergency\",\n  \"patientAge\": 65,\n  \"patientGender\": \"MALE\",\n  \"severityLevel\": \"CRITICAL\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies"
+              ]
+            },
+            "description": "Create emergency with 100-second confirmation deadline. Status: CREATED"
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Manual Dispatch (Early Confirmation)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency dispatched\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    if (jsonData.assignedDriverId) {",
+                  "        pm.environment.set(\"assigned_driver_id\", jsonData.assignedDriverId);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{emergency_id}}/dispatch",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{emergency_id}}",
+                "dispatch"
+              ]
+            },
+            "description": "Manual dispatch (early confirmation) - finds nearest VERIFIED+ONLINE driver with 60s timeout"
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 Driver - View Assigned Emergency",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Assignment details received\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.emergencyId).to.exist;",
+                  "    pm.expect(jsonData.status).to.eql(\"ASSIGNED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/driver/emergencies/assigned",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "emergencies",
+                "assigned"
+              ]
+            },
+            "description": "Driver views their currently assigned emergency with timeout countdown"
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 Driver - Accept Emergency",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency accepted\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.status).to.eql(\"IN_PROGRESS\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{driver_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/driver/emergencies/{{emergency_id}}/accept",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "emergencies",
+                "{{emergency_id}}",
+                "accept"
+              ]
+            },
+            "description": "VERIFIED driver accepts emergency. Status: DISPATCHED → IN_PROGRESS. Driver session: ONLINE → ON_TRIP"
+          },
+          "response": []
+        },
+        {
+          "name": "2.5 Driver - Mark Arrived at Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Marked as arrived\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{driver_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{emergency_id}}/arrive",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{emergency_id}}",
+                "arrive"
+              ]
+            },
+            "description": "Driver marks arrived at patient location. Status: IN_PROGRESS → AT_PATIENT"
+          },
+          "response": []
+        },
+        {
+          "name": "2.6 Driver - Mark Patient Picked Up (Hospital Assignment)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Hospital assigned automatically\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include(\"Patient picked up\");",
+                  "    pm.expect(jsonData.hospital).to.exist;",
+                  "    pm.expect(jsonData.hospital.name).to.exist;",
+                  "    pm.expect(jsonData.hospital.latitude).to.exist;",
+                  "    pm.expect(jsonData.hospital.longitude).to.exist;",
+                  "    console.log(\"🏥 Assigned Hospital: \" + jsonData.hospital.name);",
+                  "    pm.environment.set(\"hospital_lat\", jsonData.hospital.latitude);",
+                  "    pm.environment.set(\"hospital_lng\", jsonData.hospital.longitude);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emergencyId\": {{emergency_id}},\n  \"patientLat\": 28.6139,\n  \"patientLng\": 77.2090\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/driver/mark-patient-picked-up",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "mark-patient-picked-up"
+              ]
+            },
+            "description": "🏥 HOSPITAL ROUTING: Auto-assigns nearest hospital using Haversine formula. Returns hospital details for UI integration."
+          },
+          "response": []
+        },
+        {
+          "name": "2.7 Driver - Complete Mission (100m Proximity)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Mission completed within 100m\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include(\"Mission completed\");",
+                  "    pm.expect(jsonData.hospital).to.exist;",
+                  "    pm.expect(jsonData.distanceKm).to.exist;",
+                  "    pm.expect(jsonData.distanceKm).to.be.below(0.1);",
+                  "    console.log(\"✅ Completed at hospital: \" + jsonData.hospital);",
+                  "    console.log(\"📏 Distance: \" + (jsonData.distanceKm * 1000) + \"m\");",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emergencyId\": {{emergency_id}},\n  \"currentLat\": {{hospital_lat}},\n  \"currentLng\": {{hospital_lng}}\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/driver/complete-mission",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "complete-mission"
+              ]
+            },
+            "description": "🏥 HOSPITAL ROUTING: Validates driver is within 100m of assigned hospital. Uses exact hospital coordinates from previous step."
+          },
+          "response": []
+        },
+        {
+          "name": "2.8 NEGATIVE - Complete Too Far (>100m)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test(\"Proximity validation failed\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.eql(\"Too far from hospital\");",
+                  "    pm.expect(jsonData.distanceKm).to.be.above(0.1);",
+                  "    console.log(\"❌ Too far: \" + (jsonData.distanceKm * 1000).toFixed(0) + \"m\");",
+                  "    console.log(\"💬 Message: \" + jsonData.message);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emergencyId\": {{emergency_id}},\n  \"currentLat\": 28.7000,\n  \"currentLng\": 77.3000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/driver/complete-mission",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "complete-mission"
+              ]
+            },
+            "description": "❌ NEGATIVE TEST: Try to complete ~12km from hospital - should return 403 with distance error"
+          },
+          "response": []
+        }
+      ],
+      "description": "Complete emergency lifecycle from creation to completion"
+    },
+    {
+      "name": "3. Cancellation Tests",
+      "item": [
+        {
+          "name": "3.1 Create Emergency for Early Cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency created\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"cancel_early_id\", jsonData.id);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 28.6139,\n  \"longitude\": 77.2090,\n  \"description\": \"False alarm - testing early cancellation\",\n  \"patientAge\": 40,\n  \"patientGender\": \"FEMALE\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies"
+              ]
+            },
+            "description": "Create emergency for early cancellation test (within 100s, no penalty)"
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Cancel Early (Within 100s - No Penalty)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Cancelled without penalty\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.suspect).to.not.exist;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{public_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{cancel_early_id}}/cancel",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{cancel_early_id}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancel emergency within 100s before dispatch - NO PENALTY, suspect_count NOT incremented"
+          },
+          "response": []
+        },
+        {
+          "name": "3.3 Create Emergency for Late Cancel",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency created\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"cancel_late_id\", jsonData.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 28.6139,\n  \"longitude\": 77.2090,\n  \"description\": \"Testing late cancellation penalty\",\n  \"patientAge\": 50\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies"
+              ]
+            },
+            "description": "Create emergency for late cancellation test (after driver assigned)"
+          },
+          "response": []
+        },
+        {
+          "name": "3.4 Dispatch for Late Cancel Test",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{public_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{cancel_late_id}}/dispatch",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{cancel_late_id}}",
+                "dispatch"
+              ]
+            },
+            "description": "Dispatch emergency to driver before testing late cancellation"
+          },
+          "response": []
+        },
+        {
+          "name": "3.5 Driver Accepts for Late Cancel Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/driver/emergencies/{{cancel_late_id}}/accept",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "emergencies",
+                "{{cancel_late_id}}",
+                "accept"
+              ]
+            },
+            "description": "Driver accepts before user cancels (testing late cancellation scenario)"
+          },
+          "response": []
+        },
+        {
+          "name": "3.6 Cancel Late (After Driver - SUSPECT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Marked as suspect\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.suspect).to.be.true;",
+                  "    pm.expect(jsonData.warning).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{public_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{cancel_late_id}}/cancel",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{cancel_late_id}}",
+                "cancel"
+              ]
+            },
+            "description": "Cancel after driver assigned - SUSPECT MARKING, suspect_count incremented, driver released"
+          },
+          "response": []
+        }
+      ],
+      "description": "Test early cancellation (no penalty) and late cancellation (suspect marking)"
+    },
+    {
+      "name": "4. Driver Operations",
+      "item": [
+        {
+          "name": "4.1 Create Emergency for Rejection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency created\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"reject_test_id\", jsonData.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 28.6139,\n  \"longitude\": 77.2090,\n  \"description\": \"Testing driver rejection\",\n  \"patientAge\": 45\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies"
+              ]
+            },
+            "description": "Create emergency for driver rejection test"
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Dispatch for Rejection Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{reject_test_id}}/dispatch",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{reject_test_id}}",
+                "dispatch"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 Driver - Reject Emergency",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency rejected and redispatched\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    pm.expect(jsonData.redispatchedTo).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{driver_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Vehicle breakdown - unable to respond\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/driver/emergencies/{{reject_test_id}}/reject",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "emergencies",
+                "{{reject_test_id}}",
+                "reject"
+              ]
+            },
+            "description": "Driver rejects emergency - auto-redispatch to next nearest available driver"
+          },
+          "response": []
+        }
+      ],
+      "description": "Driver-specific operations: reject, view assignments"
+    },
+    {
+      "name": "5. Authorization Tests",
+      "item": [
+        {
+          "name": "5.1 NEGATIVE - PUBLIC User Tries Accept",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/driver/emergencies/{{emergency_id}}/accept",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "emergencies",
+                "{{emergency_id}}",
+                "accept"
+              ]
+            },
+            "description": "NEGATIVE TEST: PUBLIC user cannot access driver endpoints - should return 403 Forbidden"
+          },
+          "response": []
+        },
+        {
+          "name": "5.2 PENDING Driver - Send OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"OTP sent\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.otpSent) {",
+                  "        pm.environment.set(\"pending_driver_otp\", jsonData.otpSent);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876500003\",\n  \"role\": \"DRIVER\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/send-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Get token for PENDING driver (not verified yet)"
+          },
+          "response": []
+        },
+        {
+          "name": "5.3 PENDING Driver - Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token received but PENDING\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.environment.set(\"pending_driver_token\", jsonData.token);",
+                  "    pm.expect(jsonData.verificationStatus).to.eql(\"PENDING\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876500003\",\n  \"otp\": \"{{pending_driver_otp}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "PENDING driver can login but cannot accept emergencies"
+          },
+          "response": []
+        },
+        {
+          "name": "5.4 NEGATIVE - PENDING Driver Tries Accept",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403 Forbidden\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "",
+                  "pm.test(\"Error message correct\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.error).to.include(\"VERIFIED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{pending_driver_token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/driver/emergencies/{{emergency_id}}/accept",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "driver",
+                "emergencies",
+                "{{emergency_id}}",
+                "accept"
+              ]
+            },
+            "description": "NEGATIVE TEST: PENDING driver cannot accept emergencies - only VERIFIED drivers can"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authorization checks: role-based access control, verification status checks"
+    },
+    {
+      "name": "6. System Health",
+      "item": [
+        {
+          "name": "6.1 Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Application is UP\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check application health status"
+          },
+          "response": []
+        }
+      ],
+      "description": "System health and monitoring endpoints"
+    },
+    {
+      "name": "3. Safety & AI Features",
+      "item": [
+        {
+          "name": "3.1 Set Ownership (SELF) - Triggers Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Ownership set to SELF\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.emergencyFor).to.eql(\"SELF\");",
+                  "    pm.expect(jsonData.notificationStatus).to.eql(\"NOTIFIED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"emergencyFor\": \"SELF\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{emergency_id}}/ownership",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{emergency_id}}",
+                "ownership"
+              ]
+            },
+            "description": "User confirms emergency is for SELF. Should trigger immediate mock notification."
+          }
+        },
+        {
+          "name": "3.2 Set Ownership (OTHER) - Skips Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Ownership set to OTHER\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.emergencyFor).to.eql(\"OTHER\");",
+                  "    pm.expect(jsonData.notificationStatus).to.eql(\"SKIPPED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"emergencyFor\": \"OTHER\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{emergency_id}}/ownership",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{emergency_id}}",
+                "ownership"
+              ]
+            },
+            "description": "User confirms emergency is for OTHER (Bystander). notifications skipped."
+          }
+        },
+        {
+          "name": "3.3 Update AI Assessment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{public_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"assessment\": \"Critical - Unconscious patient\",\n    \"isConscious\": false,\n    \"firstAid\": [\"CPR started\"]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{emergency_id}}/ai-assessment",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{emergency_id}}",
+                "ai-assessment"
+              ]
+            },
+            "description": "Update AI findings. This should be visible to the driver."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Creating Notification",
+      "item": [
+        {
+          "name": "Send OTP (Notification User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"OTP sent successfully\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.message).to.include(\"OTP sent\");",
+                  "    if (jsonData.otpSent) {",
+                  "        pm.environment.set(\"notificationuserotp\", jsonData.otpSent);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543212\",\n  \"role\": \"PUBLIC\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/send-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Send OTP to Notification User (Public)"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP (Notification User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Token received\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.exist;",
+                  "    pm.environment.set(\"notificationusertoken\", jsonData.token);",
+                  "    pm.environment.set(\"notification_user_id\", jsonData.userId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543212\",\n  \"otp\": \"{{notificationuserotp}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/auth/verify-otp",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verify OTP for Notification User"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Emergency (Notification User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Emergency created\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.id).to.exist;",
+                  "    pm.environment.set(\"notification_emergency_id\", jsonData.id);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{notificationusertoken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 28.6250,\n  \"longitude\": 77.2050,\n  \"description\": \"Test Emergency for Notification\",\n  \"severityLevel\": \"CRITICAL\",\n  \"type\": \"ACCIDENT\",\n  \"emergencyFor\": \"SELF\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies"
+              ]
+            },
+            "description": "Create emergency for SELF to trigger Helping Hand"
+          },
+          "response": []
+        },
+        {
+          "name": "Dispatch Emergency (Notification User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{notificationusertoken}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8081/api/emergencies/{{notification_emergency_id}}/dispatch",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8081",
+              "path": [
+                "api",
+                "emergencies",
+                "{{notification_emergency_id}}",
+                "dispatch"
+              ]
+            },
+            "description": "Dispatch emergency to make it active and eligible for Helping Hand"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8081",
+      "type": "string"
+    }
+  ]
+}
