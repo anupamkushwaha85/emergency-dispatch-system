@@ -152,4 +152,58 @@ public class HelpingHandService {
         log.info("✅ Returning {} nearby emergencies to user.", results.size());
         return results;
     }
+
+    /**
+     * Find nearby helpers for a newly created emergency.
+     * Returns a list of users who should receive push notifications.
+     */
+    @Transactional(readOnly = true)
+    public List<User> findNearbyHelpers(Emergency emergency, double radiusKm) {
+        log.info("🔍 Finding nearby helpers for Emergency: {}", emergency.getId());
+
+        // 1. Get all user locations (Optimization: Use a geospatial query if DB
+        // supports it)
+        // For now, fetch all active locations and filter in memory (MVP)
+        List<UserLocation> allLocations = userLocationRepository.findAll();
+
+        return allLocations.stream()
+                .filter(loc -> {
+                    // Rule: Exclude the victim themselves
+                    if (loc.getUser() == null || loc.getUser().getId().equals(emergency.getUserId())) {
+                        return false;
+                    }
+
+                    // Rule: User must be PUBLIC and Helping Hand Enabled
+                    if (loc.getUser().getRole() != UserRole.PUBLIC) {
+                        log.debug("User {} skipped: Not PUBLIC ({})", loc.getUser().getId(), loc.getUser().getRole());
+                        return false;
+                    }
+                    if (!loc.getUser().isHelpingHandEnabled()) {
+                        log.debug("User {} skipped: Helping Hand Disabled", loc.getUser().getId());
+                        return false;
+                    }
+
+                    // Rule: Location must be recent (e.g., within last 24 hours)
+                    if (loc.getLastUpdated().isBefore(LocalDateTime.now().minusHours(24))) {
+                        log.debug("User {} skipped: Stale location (Last updated: {})", loc.getUser().getId(),
+                                loc.getLastUpdated());
+                        return false;
+                    }
+
+                    // Rule: Distance Check
+                    double dist = GeoUtil.distanceKm(
+                            loc.getLatitude(), loc.getLongitude(),
+                            emergency.getLatitude(), emergency.getLongitude());
+
+                    if (dist > radiusKm) {
+                        log.debug("User {} skipped: Too far ({}km > {}km)", loc.getUser().getId(), dist, radiusKm);
+                        return false;
+                    }
+
+                    log.info("✅ User {} MATCHED! (Dist: {}km)", loc.getUser().getId(), dist);
+                    return true;
+                })
+                .map(UserLocation::getUser)
+                .collect(Collectors.toList());
+    }
 }

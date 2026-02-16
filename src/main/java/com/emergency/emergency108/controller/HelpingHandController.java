@@ -30,15 +30,4 @@ public class HelpingHandController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Get nearby emergencies.
-     * Called periodically or on-demand.
-     */
-    @GetMapping("/nearby")
-    public ResponseEntity<List<NearbyEmergencyDTO>> getNearbyEmergencies(
-            @RequestParam Long userId,
-            @RequestParam(defaultValue = "3.0") double radiusKm) {
-        List<NearbyEmergencyDTO> emergencies = helpingHandService.getNearbyEmergencies(userId, radiusKm);
-        return ResponseEntity.ok(emergencies);
-    }
 }

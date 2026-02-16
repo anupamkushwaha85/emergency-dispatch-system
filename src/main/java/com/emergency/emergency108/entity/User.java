@@ -92,6 +92,13 @@ public class User {
     @Column(name = "blood_group", length = 5)
     private String bloodGroup;
 
+    // FCM Token for Push Notifications
+    @Column(name = "fcm_token", length = 500)
+    private String fcmToken;
+
+    @Column(name = "last_token_update")
+    private LocalDateTime lastTokenUpdate;
+
     // getters & setters (write manually or use Lombok later)
     public Long getId() {
         return id;
@@ -275,5 +282,21 @@ public class User {
 
     public void setBloodGroup(String bloodGroup) {
         this.bloodGroup = bloodGroup;
+    }
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
+
+    public LocalDateTime getLastTokenUpdate() {
+        return lastTokenUpdate;
+    }
+
+    public void setLastTokenUpdate(LocalDateTime lastTokenUpdate) {
+        this.lastTokenUpdate = lastTokenUpdate;
     }
 }

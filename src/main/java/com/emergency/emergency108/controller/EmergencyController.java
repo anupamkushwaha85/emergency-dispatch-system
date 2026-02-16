@@ -44,6 +44,8 @@ public class EmergencyController {
     private final EmergencyCancellationService cancellationService;
     private final NotificationService notificationService;
     private final AiAssistanceService aiAssistanceService;
+    private final HelpingHandService helpingHandService;
+    private final FCMNotificationService fcmNotificationService;
 
     public EmergencyController(EmergencyRepository emergencyRepository,
             EmergencyDispatchService emergencyDispatchService,
@@ -57,7 +59,9 @@ public class EmergencyController {
             EmergencyAuthorizationService authorizationService,
             EmergencyCancellationService cancellationService,
             NotificationService notificationService,
-            AiAssistanceService aiAssistanceService) {
+            AiAssistanceService aiAssistanceService,
+            HelpingHandService helpingHandService,
+            FCMNotificationService fcmNotificationService) {
         this.emergencyDispatchService = emergencyDispatchService;
         this.authGuard = authGuard;
         this.metrics = metrics;
@@ -72,6 +76,8 @@ public class EmergencyController {
         this.cancellationService = cancellationService;
         this.notificationService = notificationService;
         this.aiAssistanceService = aiAssistanceService;
+        this.helpingHandService = helpingHandService;
+        this.fcmNotificationService = fcmNotificationService;
     }
 
     /**
@@ -175,7 +181,43 @@ public class EmergencyController {
 
         log.info("Emergency created by user {} with 100s confirmation deadline", userId);
 
-        return emergencyRepository.save(emergency);
+        Emergency savedEmergency = emergencyRepository.save(emergency);
+
+        // Async: Notify nearby helping hands
+        try {
+            // Find nearby helpers (3km radius)
+            List<User> nearbyHelpers = helpingHandService.findNearbyHelpers(savedEmergency, 3.0);
+
+            if (!nearbyHelpers.isEmpty()) {
+                List<String> tokens = nearbyHelpers.stream()
+                        .map(User::getFcmToken)
+                        .filter(token -> token != null && !token.isEmpty())
+                        .collect(java.util.stream.Collectors.toList());
+
+                if (!tokens.isEmpty()) {
+                    Map<String, String> data = new HashMap<>();
+                    data.put("type", "helping_hand");
+                    data.put("emergencyId", String.valueOf(savedEmergency.getId()));
+                    data.put("latitude", String.valueOf(savedEmergency.getLatitude()));
+                    data.put("longitude", String.valueOf(savedEmergency.getLongitude()));
+
+                    fcmNotificationService.sendBatchNotifications(
+                            tokens,
+                            "🚨 Emergency Nearby!",
+                            "Someone nearby needs help. Tap to view details.",
+                            data);
+                    log.info("Sent push notifications to {} helpers", tokens.size());
+                } else {
+                    log.info("Found {} helpers but none had valid FCM tokens", nearbyHelpers.size());
+                }
+            } else {
+                log.info("No nearby helpers found within 3km radius");
+            }
+        } catch (Exception e) {
+            log.error("Failed to notify helping hands: {}", e.getMessage());
+        }
+
+        return savedEmergency;
     }
 
     /**

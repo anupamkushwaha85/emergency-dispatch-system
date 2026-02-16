@@ -62,4 +62,42 @@ public class UserController {
             return ResponseEntity.internalServerError().body(Map.of("error", "Internal Error"));
         }
     }
+
+    /**
+     * Register or update FCM token for the authenticated user
+     * POST /api/users/register-fcm-token
+     * Body: { "fcmToken": "string" }
+     */
+    @PostMapping("/register-fcm-token")
+    public ResponseEntity<?> registerFcmToken(@RequestBody Map<String, String> request) {
+        authGuard.requireAuthenticated();
+        Long userId = AuthContext.getUserId();
+
+        String fcmToken = request.get("fcmToken");
+
+        if (fcmToken == null || fcmToken.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "FCM token is required"));
+        }
+
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+            user.setFcmToken(fcmToken);
+            user.setLastTokenUpdate(java.time.LocalDateTime.now());
+            userRepository.save(user);
+
+            log.info("FCM token registered for user {}: {}...",
+                    userId,
+                    fcmToken.substring(0, Math.min(20, fcmToken.length())));
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "FCM token registered successfully"));
+
+        } catch (Exception e) {
+            log.error("Failed to register FCM token for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.internalServerError().body(Map.of("error", "Internal Error"));
+        }
+    }
 }

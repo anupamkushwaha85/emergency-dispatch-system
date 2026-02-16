@@ -41,3 +41,6 @@ application-prod.properties
 # Temporary / cache
 # =========================
 tmp/
+
+# Firebase credentials
+firebase-service-account.json
