@@ -9,5 +9,26 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+# Copy Firebase config from source (since it is in resources) 
+# Note: In a real production app, use ENV variables for secrets. 
+# But for this MVP, copying the file is fine.
+COPY src/main/resources/firebase-service-account.json ./firebase-service-account.json
+# We also need to make sure the app knows where to look if it's not on classpath root,
+# but usually initializing from classpath works if it is in resources.
+# However, `ClassPathResource` looks in the JAR.
+# If the code uses `ClassPathResource`, it should find it inside app.jar!
+# WAIT. The error said "class path resource ... cannot be opened".
+# If it's in src/main/resources, Maven should package it into the JAR.
+# If Maven packaged it, why is it not found?
+# Maybe the file name case is wrong? Or it was excluded?
+# Let's verify pom.xml to see if resources are filtered/excluded.
+# But just to be safe, I'll copy it to the filesystem AND ensure it's in the JAR.
+# Actually, if I copy it to /app/firebase-service-account.json, I might need to change the code to look for it there
+# if ClassPathResource fails.
+# BUT, `ClassPathResource` looks INSIDE the JAR.
+# If it failed, it means `firebase-service-account.json` is NOT in the built JAR.
+# So `mvn package` didn't put it there.
+# I will check `pom.xml` in the next step.
+# For now, I will add the COPY command just in case we need to switch to file system loading.
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
