@@ -20,20 +20,36 @@ public class FirebaseConfig {
     @PostConstruct
     public void initializeFirebase() {
         try {
-            // Check if Firebase is already initialized
-            if (FirebaseApp.getApps().isEmpty()) {
-                InputStream serviceAccount = new ClassPathResource("firebase-service-account.json").getInputStream();
-
-                FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .build();
-
-                FirebaseApp.initializeApp(options);
-                log.info("Firebase Admin SDK initialized successfully");
-            } else {
+            if (!FirebaseApp.getApps().isEmpty()) {
                 log.info("Firebase Admin SDK already initialized");
+                return;
             }
-        } catch (IOException e) {
+
+            GoogleCredentials credentials;
+            String base64Config = System.getenv("FIREBASE_SERVICE_ACCOUNT_BASE64");
+
+            if (base64Config != null && !base64Config.isEmpty()) {
+                // Production: Use Environment Variable
+                log.info("Initializing Firebase from Environment Variable (Base64)");
+                try (InputStream is = new java.io.ByteArrayInputStream(
+                        java.util.Base64.getDecoder().decode(base64Config))) {
+                    credentials = GoogleCredentials.fromStream(is);
+                }
+            } else {
+                // Local: Use File
+                log.info("Initializing Firebase from Classpath Resource");
+                InputStream serviceAccount = new ClassPathResource("firebase-service-account.json").getInputStream();
+                credentials = GoogleCredentials.fromStream(serviceAccount);
+            }
+
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(credentials)
+                    .build();
+
+            FirebaseApp.initializeApp(options);
+            log.info("Firebase Admin SDK initialized successfully");
+
+        } catch (IOException | IllegalArgumentException e) {
             log.error("Failed to initialize Firebase Admin SDK", e);
             throw new RuntimeException("Failed to initialize Firebase", e);
         }
