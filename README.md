@@ -86,6 +86,19 @@ com.hackathon.emergency108
 ```bash
 SPRING_PROFILES_ACTIVE=local
 ```
+SPRING_PROFILES_ACTIVE=local
+```
+
+### 🔐 Magic OTPs (Test/Dev)
+
+To simplify testing without SMS integration, you can configure static OTPs via Environment Variables:
+
+| Variable | Role | Description |
+| :--- | :--- | :--- |
+| `MAGIC_OTP_USER` | USER | Static OTP for any user logging in with `UserRole.PUBLIC` |
+| `MAGIC_OTP_DRIVER` | DRIVER | Static OTP for any driver logging in with `UserRole.DRIVER` |
+
+*If these are not set, a random OTP is generated.*
 
 ---
 

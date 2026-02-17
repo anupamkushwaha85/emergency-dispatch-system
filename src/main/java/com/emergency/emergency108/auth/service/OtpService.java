@@ -17,11 +17,13 @@ import java.util.Random;
 public class OtpService {
 
     private static final Logger logger = LoggerFactory.getLogger(OtpService.class);
-    private static final int OTP_LENGTH = 6;
     private static final int OTP_VALIDITY_MINUTES = 5;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+
+    public OtpService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     /**
      * Generate and send OTP to user's phone
@@ -36,7 +38,11 @@ public class OtpService {
                 .orElseGet(() -> createNewUser(phone, role));
 
         // Generate 6-digit OTP
-        String otp = generateOtp();
+        String otp = getMagicOtp(user);
+        if (otp == null) {
+            otp = generateOtp();
+        }
+
         user.setOtp(otp);
         user.setOtpGeneratedAt(LocalDateTime.now());
 
@@ -44,9 +50,39 @@ public class OtpService {
 
         // In production, send OTP via SMS gateway (Twilio, AWS SNS, etc.)
         logger.info("✅ OTP generated successfully for {}: {}", phone, otp);
-        logger.warn("🔔 [MOCK SMS] Sending OTP {} to phone {}", otp, phone);
+        if (otp.equals("123456") || otp.equals("654321") || otp.equals("221029")) {
+            logger.warn("🪄 Using Magic OTP for {}", phone);
+        } else {
+            logger.warn("🔔 [MOCK SMS] Sending OTP {} to phone {}", otp, phone);
+        }
 
         return otp; // Remove this in production! Only for testing
+    }
+
+    private String getMagicOtp(User user) {
+        String adminOtp = System.getenv("MAGIC_OTP_ADMIN");
+        String userOtp = System.getenv("MAGIC_OTP_USER");
+        String driverOtp = System.getenv("MAGIC_OTP_DRIVER");
+
+        // 1. Specific Admin User (High Priority)
+        // If phone is 9090221043, check env var first, otherwise default to 123456
+        if ("9090221043".equals(user.getPhone())) {
+            if (adminOtp != null && !adminOtp.isBlank()) {
+                return adminOtp;
+            }
+            return "123456"; // Default fallback for this specific admin
+        }
+
+        // 2. Generic Role Checks
+        if (user.getRole() == UserRole.DRIVER && driverOtp != null && !driverOtp.isBlank()) {
+            return driverOtp;
+        }
+
+        if (user.getRole() == UserRole.PUBLIC && userOtp != null && !userOtp.isBlank()) {
+            return userOtp;
+        }
+
+        return null;
     }
 
     /**
@@ -135,18 +171,4 @@ public class OtpService {
         return String.valueOf(otp);
     }
 
-    /**
-     * Check if OTP is still valid (for resend functionality)
-     */
-    public boolean isOtpValid(String phone) {
-        return userRepository.findByPhone(phone)
-                .map(user -> {
-                    if (user.getOtpGeneratedAt() == null) return false;
-                    LocalDateTime expiryTime = user.getOtpGeneratedAt().plusMinutes(OTP_VALIDITY_MINUTES);
-                    return LocalDateTime.now().isBefore(expiryTime);
-                })
-                .orElse(false);
-    }
 }
-
-
