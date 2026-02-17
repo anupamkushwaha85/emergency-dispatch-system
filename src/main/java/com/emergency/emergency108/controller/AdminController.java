@@ -3,8 +3,11 @@ package com.emergency.emergency108.controller;
 import com.emergency.emergency108.auth.token.AuthTokenPayload;
 import com.emergency.emergency108.auth.token.TokenService;
 import com.emergency.emergency108.entity.DriverVerificationStatus;
+import com.emergency.emergency108.entity.Emergency;
+import com.emergency.emergency108.entity.EmergencyStatus;
 import com.emergency.emergency108.entity.User;
 import com.emergency.emergency108.entity.UserRole;
+import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +32,9 @@ public class AdminController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EmergencyRepository emergencyRepository;
 
     /**
      * Get all pending driver verifications
@@ -194,6 +200,47 @@ public class AdminController {
             logger.error("❌ Error rejecting driver: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to reject driver");
+        }
+    }
+
+    /**
+     * Get all verified drivers for assignment
+     * GET /api/admin/verified-drivers
+     */
+    @GetMapping("/verified-drivers")
+    public ResponseEntity<?> getVerifiedDrivers(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            AuthTokenPayload payload = tokenService.validateAndParse(token);
+
+            User admin = userRepository.findById(payload.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (admin.getRole() != UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Only admins can view verified drivers");
+            }
+
+            List<User> verifiedDrivers = userRepository.findByRoleAndDriverVerificationStatus(
+                    UserRole.DRIVER, DriverVerificationStatus.VERIFIED);
+
+            List<Map<String, Object>> drivers = verifiedDrivers.stream()
+                    .map(d -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", d.getId());
+                        map.put("name", d.getName());
+                        map.put("phone", d.getPhone());
+                        map.put("status", d.getDriverVerificationStatus());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(drivers);
+
+        } catch (Exception e) {
+            logger.error("❌ Error fetching verified drivers: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to fetch verified drivers");
         }
     }
 }
