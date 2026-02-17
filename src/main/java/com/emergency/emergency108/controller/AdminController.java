@@ -9,6 +9,8 @@ import com.emergency.emergency108.entity.User;
 import com.emergency.emergency108.entity.UserRole;
 import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.UserRepository;
+import com.emergency.emergency108.repository.AmbulanceRepository;
+import com.emergency.emergency108.entity.AmbulanceStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,14 +29,20 @@ public class AdminController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
-    @Autowired
-    private TokenService tokenService;
+    private final TokenService tokenService;
+    private final UserRepository userRepository;
+    private final EmergencyRepository emergencyRepository;
+    private final AmbulanceRepository ambulanceRepository;
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private EmergencyRepository emergencyRepository;
+    public AdminController(TokenService tokenService,
+            UserRepository userRepository,
+            EmergencyRepository emergencyRepository,
+            AmbulanceRepository ambulanceRepository) {
+        this.tokenService = tokenService;
+        this.userRepository = userRepository;
+        this.emergencyRepository = emergencyRepository;
+        this.ambulanceRepository = ambulanceRepository;
+    }
 
     /**
      * Get all pending driver verifications
@@ -241,6 +249,87 @@ public class AdminController {
             logger.error("❌ Error fetching verified drivers: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to fetch verified drivers");
+        }
+    }
+
+    /**
+     * Get Dashboard Stats
+     * GET /api/admin/dashboard-stats
+     */
+    @GetMapping("/dashboard-stats")
+    public ResponseEntity<?> getDashboardStats(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            AuthTokenPayload payload = tokenService.validateAndParse(token);
+
+            User admin = userRepository.findById(payload.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (admin.getRole() != UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Only admins can view dashboard stats");
+            }
+
+            // 1. Active Emergencies (Not COMPLETED or CANCELLED)
+            // Fetch all and stream filter for simplicity
+            List<Emergency> allEmergencies = emergencyRepository.findAll();
+            long activeEmergenciesCount = allEmergencies.stream()
+                    .filter(e -> e.getStatus() != EmergencyStatus.COMPLETED &&
+                            e.getStatus() != EmergencyStatus.CANCELLED)
+                    .count();
+
+            // 2. Available Ambulances
+            long availableAmbulancesCount = ambulanceRepository.findByStatus(AmbulanceStatus.AVAILABLE).size();
+
+            // 3. Pending Drivers
+            List<User> pendingDrivers = userRepository.findByRoleAndDriverVerificationStatus(
+                    UserRole.DRIVER, DriverVerificationStatus.PENDING);
+            int pendingDriversCount = pendingDrivers.size();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("activeEmergencies", activeEmergenciesCount);
+            response.put("availableAmbulances", availableAmbulancesCount);
+            response.put("pendingDrivers", pendingDriversCount);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("❌ Error fetching dashboard stats: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to fetch dashboard stats");
+        }
+    }
+
+    /**
+     * Get Active Emergencies for Live Map
+     * GET /api/admin/active-emergencies
+     */
+    @GetMapping("/active-emergencies")
+    public ResponseEntity<?> getActiveEmergencies(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            AuthTokenPayload payload = tokenService.validateAndParse(token);
+
+            // Validate admin (optional, assuming map is admin only)
+            userRepository.findById(payload.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            List<Emergency> all = emergencyRepository.findAll();
+            List<Emergency> active = all.stream()
+                    .filter(e -> e.getStatus() != EmergencyStatus.COMPLETED &&
+                            e.getStatus() != EmergencyStatus.CANCELLED)
+                    .collect(Collectors.toList());
+
+            // Note: Enum has CREATED, IN_PROGRESS, DISPATCHED, AT_PATIENT, TO_HOSPITAL,
+            // COMPLETED, CANCELLED, UNASSIGNED
+            // We want all except COMPLETED and CANCELLED.
+
+            return ResponseEntity.ok(active);
+
+        } catch (Exception e) {
+            logger.error("❌ Error fetching active emergencies: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to fetch active emergencies");
         }
     }
 }
