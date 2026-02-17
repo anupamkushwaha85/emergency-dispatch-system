@@ -27,7 +27,7 @@ public class AuthContextFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
 
-    private final UserRepository userRepository  ;
+    private final UserRepository userRepository;
 
     public AuthContextFilter(TokenService tokenService, UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -38,8 +38,13 @@ public class AuthContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+            FilterChain filterChain) throws ServletException, IOException {
+
+        // Skip processing for OPTIONS requests (CORS preflight)
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         // SECURITY CRITICAL: Clear stale context BEFORE and AFTER request
         AuthContext.clear();
@@ -51,23 +56,19 @@ public class AuthContextFilter extends OncePerRequestFilter {
 
                 String token = authHeader.substring(7);
 
-                AuthTokenPayload payload =
-                        tokenService.validateAndParse(token);
+                AuthTokenPayload payload = tokenService.validateAndParse(token);
 
                 User user = userRepository.findById(payload.getUserId())
                         .orElseThrow(UnauthenticatedException::new);
 
-                boolean driverVerified =
-                        user.getRole() == UserRole.DRIVER &&
-                                user.getDriverVerificationStatus() == DriverVerificationStatus.VERIFIED;
+                boolean driverVerified = user.getRole() == UserRole.DRIVER &&
+                        user.getDriverVerificationStatus() == DriverVerificationStatus.VERIFIED;
 
-                AuthUserPrincipal principal =
-                        new AuthUserPrincipal(
-                                user.getId(),
-                                user.getRole(),
-                                user.isBlocked(),
-                                driverVerified
-                        );
+                AuthUserPrincipal principal = new AuthUserPrincipal(
+                        user.getId(),
+                        user.getRole(),
+                        user.isBlocked(),
+                        driverVerified);
 
                 AuthContext.set(principal);
                 request.setAttribute("_auth_verified", true);
