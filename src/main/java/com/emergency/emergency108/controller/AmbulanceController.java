@@ -113,8 +113,9 @@ public class AmbulanceController {
         AuthTokenPayload payload = tokenService.validateAndParse(token);
         User user = userRepository.findById(payload.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
         if (user.getRole() != UserRole.ADMIN) {
-            throw new RuntimeException("Only admins can perform this action");
+            throw new RuntimeException("Access Denied: User role is " + user.getRole() + ", but ADMIN is required.");
         }
     }
 }
