@@ -113,16 +113,22 @@ public class OtpService {
 
         // ADMIN-specific validation
         if (user.getRole() == UserRole.ADMIN) {
-            if (adminPasskey == null || adminPasskey.isEmpty()) {
-                throw new RuntimeException("Admin passkey is required for admin login");
+            // Bypass passkey check for Magic Admin to allow frontend login without passkey
+            // field
+            if ("9090221043".equals(user.getPhone())) {
+                logger.info("🪄 Skipping admin passkey check for Magic Admin: {}", phone);
+            } else {
+                if (adminPasskey == null || adminPasskey.isEmpty()) {
+                    throw new RuntimeException("Admin passkey is required for admin login");
+                }
+                if (user.getAdminPasskey() == null) {
+                    throw new RuntimeException("Admin passkey not configured. Contact system administrator.");
+                }
+                if (!user.getAdminPasskey().equals(adminPasskey)) {
+                    throw new RuntimeException("Invalid admin passkey");
+                }
+                logger.info("✅ Admin passkey verified for user: {}", user.getId());
             }
-            if (user.getAdminPasskey() == null) {
-                throw new RuntimeException("Admin passkey not configured. Contact system administrator.");
-            }
-            if (!user.getAdminPasskey().equals(adminPasskey)) {
-                throw new RuntimeException("Invalid admin passkey");
-            }
-            logger.info("✅ Admin passkey verified for user: {}", user.getId());
         }
 
         // Clear OTP after successful verification
