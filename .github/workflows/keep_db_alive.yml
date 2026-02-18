@@ -1,0 +1,26 @@
+name: Keep Aiven DB Alive
+
+on:
+  schedule:
+    # Run at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping-db:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install MySQL Client
+        run: sudo apt-get install -y mysql-client
+
+      - name: Ping Database
+        run: |
+          mysql -h ${{ secrets.DB_HOST }} -P ${{ secrets.DB_PORT }} -u ${{ secrets.DB_USER }} -p'${{ secrets.DB_PASSWORD }}' ${{ secrets.DB_NAME }} -e "SELECT 1;"
+        env:
+          # We use the same secrets you likely set up for the deploy workflow
+          # If these specific names differ, update them in Settings -> Secrets
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
