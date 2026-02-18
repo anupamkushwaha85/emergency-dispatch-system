@@ -55,6 +55,14 @@ public class AmbulanceController {
                 ambulance.setLongitude(77.2090);
             if (ambulance.getStatus() == null)
                 ambulance.setStatus(AmbulanceStatus.AVAILABLE);
+
+            // Auto-generate code if not provided
+            if (ambulance.getCode() == null || ambulance.getCode().isEmpty()) {
+                // Example: AMB-8374
+                String randomCode = "AMB-" + (1000 + new java.util.Random().nextInt(9000));
+                ambulance.setCode(randomCode);
+            }
+
             ambulance.setVersion(0L);
 
             Ambulance saved = ambulanceRepository.save(ambulance);
