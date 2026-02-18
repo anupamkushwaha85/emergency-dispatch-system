@@ -72,7 +72,7 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String address;
 
-    @Column(name = "document_url", length = 500)
+    @Column(name = "document_url", columnDefinition = "LONGTEXT")
     private String documentUrl;
 
     @Column(name = "is_helping_hand_enabled")
