@@ -14,41 +14,41 @@ import java.util.Date;
 @Service
 public class TokenService {
 
-    private static final String SECRET =
-            "emergency108-super-secure-secret-key-which-is-long";
+        private static final String DEFAULT_SECRET = "emergency108-super-secure-secret-key-which-is-long";
 
-    // Token expiry: 100 years (effectively lifetime)
-    private static final long EXPIRY_MILLIS = 100L * 365 * 24 * 60 * 60 * 1000;
+        // Use environment variable if available, otherwise fallback to default
+        private static final String SECRET = System.getenv("JWT_SECRET") != null
+                        ? System.getenv("JWT_SECRET")
+                        : DEFAULT_SECRET;
 
-    private final Key key =
-            Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
+        private static final long EXPIRY_MILLIS = 100L * 365 * 24 * 60 * 60 * 1000;
 
+        private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
 
+        public String generate(AuthTokenPayload payload) {
 
-    public String generate(AuthTokenPayload payload) {
+                Instant now = Instant.now();
 
-        Instant now = Instant.now();
+                return Jwts.builder()
+                                .setSubject(String.valueOf(payload.getUserId()))
+                                .claim("role", payload.getRole().name())
+                                .setIssuedAt(Date.from(now))
+                                .setExpiration(new Date(now.toEpochMilli() + EXPIRY_MILLIS))
+                                .signWith(key)
+                                .compact();
+        }
 
-        return Jwts.builder()
-                .setSubject(String.valueOf(payload.getUserId()))
-                .claim("role", payload.getRole().name())
-                .setIssuedAt(Date.from(now))
-                .setExpiration(new Date(now.toEpochMilli() + EXPIRY_MILLIS))
-                .signWith(key)
-                .compact();
-    }
+        public AuthTokenPayload validateAndParse(String token) {
 
-    public AuthTokenPayload validateAndParse(String token) {
+                Claims claims = Jwts.parserBuilder()
+                                .setSigningKey(key)
+                                .build()
+                                .parseClaimsJws(token)
+                                .getBody();
 
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+                Long userId = Long.valueOf(claims.getSubject());
+                UserRole role = UserRole.valueOf(claims.get("role", String.class));
 
-        Long userId = Long.valueOf(claims.getSubject());
-        UserRole role = UserRole.valueOf(claims.get("role", String.class));
-
-        return new AuthTokenPayload(userId, role);
-    }
+                return new AuthTokenPayload(userId, role);
+        }
 }
