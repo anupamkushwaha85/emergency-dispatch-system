@@ -15,7 +15,7 @@ public class HomeController {
 
     @GetMapping("/")
     public String home() {
-        return "Emergency 108 backend is running";
+        return "OK";
     }
 
     @GetMapping("/api/users/count")
@@ -23,4 +23,3 @@ public class HomeController {
         return userRepository.count();
     }
 }
-
