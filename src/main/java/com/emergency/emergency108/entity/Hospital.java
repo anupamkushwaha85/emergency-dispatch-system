@@ -2,8 +2,11 @@ package com.emergency.emergency108.entity;
 
 import jakarta.persistence.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
 @Table(name = "hospitals")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Hospital {
 
     @Id

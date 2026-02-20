@@ -3,8 +3,11 @@ package com.emergency.emergency108.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
 @Table(name = "emergencies")
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Emergency {
 
     @Id
