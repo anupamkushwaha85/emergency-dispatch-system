@@ -274,10 +274,8 @@ public class EmergencyController {
                             "Emergency not found: " + id));
 
             // Verify driver is assigned to this emergency
-            List<EmergencyAssignment> assignments = assignmentRepository.findByEmergencyId(id);
-            boolean isAssignedDriver = assignments.stream()
-                    .anyMatch(a -> driverId.equals(a.getDriverId())
-                            && a.getStatus() == EmergencyAssignmentStatus.ACCEPTED);
+            boolean isAssignedDriver = assignmentRepository.findByEmergencyIdAndDriverIdAndStatus(
+                    id, driverId, EmergencyAssignmentStatus.ACCEPTED).isPresent();
 
             if (!isAssignedDriver) {
                 throw new ResponseStatusException(
@@ -428,9 +426,9 @@ public class EmergencyController {
             trackingData.put("severity", emergency.getSeverity());
 
             // Check if emergency has been assigned
-            List<EmergencyAssignment> assignments = assignmentRepository.findByEmergencyId(id);
+            boolean hasAssignments = assignmentRepository.existsByEmergencyId(id);
 
-            if (assignments.isEmpty()) {
+            if (!hasAssignments) {
                 trackingData.put("message", "Searching for nearest ambulance...");
                 trackingData.put("ambulanceAssigned", false);
                 log.debug("Emergency {} not yet assigned", id);
@@ -438,16 +436,13 @@ public class EmergencyController {
             }
 
             // Get active assignment (ASSIGNED or ACCEPTED)
-            Optional<EmergencyAssignment> activeAssignment = assignments.stream()
-                    .filter(a -> a.getStatus() == EmergencyAssignmentStatus.ASSIGNED
-                            || a.getStatus() == EmergencyAssignmentStatus.ACCEPTED)
-                    .findFirst();
+            Optional<EmergencyAssignment> activeAssignment = assignmentRepository.findActiveAssignmentByEmergencyId(id);
 
             if (activeAssignment.isEmpty()) {
                 // If assignments exist but none active, it means they were rejected
                 trackingData.put("message", "Driver rejected. Searching for next nearby driver...");
                 trackingData.put("ambulanceAssigned", false);
-                log.debug("Emergency {} has {} assignments but none active (REJECTED)", id, assignments.size());
+                log.debug("Emergency {} has assignments but none active (REJECTED)", id);
                 return ResponseEntity.ok(trackingData);
             }
 

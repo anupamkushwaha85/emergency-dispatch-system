@@ -14,10 +14,8 @@ import com.emergency.emergency108.entity.Ambulance;
 import com.emergency.emergency108.entity.AmbulanceStatus;
 import com.emergency.emergency108.entity.DriverSession;
 import com.emergency.emergency108.service.DriverSessionService;
-import com.emergency.emergency108.entity.DriverSessionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -357,12 +355,9 @@ public class AdminController {
             }
 
             // 1. Active Emergencies (Not COMPLETED or CANCELLED)
-            // Fetch all and stream filter for simplicity
-            List<Emergency> allEmergencies = emergencyRepository.findAll();
-            long activeEmergenciesCount = allEmergencies.stream()
-                    .filter(e -> e.getStatus() != EmergencyStatus.COMPLETED &&
-                            e.getStatus() != EmergencyStatus.CANCELLED)
-                    .count();
+            java.util.List<EmergencyStatus> inactiveStatuses = java.util.Arrays.asList(
+                    EmergencyStatus.COMPLETED, EmergencyStatus.CANCELLED);
+            long activeEmergenciesCount = emergencyRepository.countByStatusNotIn(inactiveStatuses);
 
             // 2. Available Ambulances
             long availableAmbulancesCount = ambulanceRepository.findByStatus(AmbulanceStatus.AVAILABLE).size();
@@ -403,11 +398,9 @@ public class AdminController {
             userRepository.findById(payload.getUserId())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            List<Emergency> all = emergencyRepository.findAll();
-            List<Emergency> active = all.stream()
-                    .filter(e -> e.getStatus() != EmergencyStatus.COMPLETED &&
-                            e.getStatus() != EmergencyStatus.CANCELLED)
-                    .collect(Collectors.toList());
+            java.util.List<EmergencyStatus> inactiveStatuses = java.util.Arrays.asList(
+                    EmergencyStatus.COMPLETED, EmergencyStatus.CANCELLED);
+            List<Emergency> active = emergencyRepository.findByStatusNotIn(inactiveStatuses);
 
             // Note: Enum has CREATED, IN_PROGRESS, DISPATCHED, AT_PATIENT, TO_HOSPITAL,
             // COMPLETED, CANCELLED, UNASSIGNED

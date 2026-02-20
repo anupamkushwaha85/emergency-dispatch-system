@@ -37,8 +37,7 @@ public class DriverSessionInvariantValidator {
             DriverSessionRepository sessionRepository,
             EmergencyAssignmentRepository assignmentRepository,
             AmbulanceRepository ambulanceRepository,
-            UserRepository userRepository
-    ) {
+            UserRepository userRepository) {
         this.sessionRepository = sessionRepository;
         this.assignmentRepository = assignmentRepository;
         this.ambulanceRepository = ambulanceRepository;
@@ -84,16 +83,14 @@ public class DriverSessionInvariantValidator {
      */
     private int validateActiveSessionsHaveValidDrivers() {
         log.debug("Checking: Active sessions have valid drivers...");
-        List<DriverSession> activeSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .toList();
+        List<DriverSession> activeSessions = sessionRepository.findActiveSessions();
 
         int issues = 0;
         for (DriverSession session : activeSessions) {
             Optional<User> driver = userRepository.findById(session.getDriverId());
             if (driver.isEmpty()) {
                 log.error("❌ INVARIANT VIOLATION: Session {} references non-existent driver {}",
-                    session.getId(), session.getDriverId());
+                        session.getId(), session.getDriverId());
                 issues++;
             }
         }
@@ -109,16 +106,14 @@ public class DriverSessionInvariantValidator {
      */
     private int validateActiveSessionsHaveValidAmbulances() {
         log.debug("Checking: Active sessions have valid ambulances...");
-        List<DriverSession> activeSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .toList();
+        List<DriverSession> activeSessions = sessionRepository.findActiveSessions();
 
         int issues = 0;
         for (DriverSession session : activeSessions) {
             Optional<Ambulance> ambulance = ambulanceRepository.findById(session.getAmbulanceId());
             if (ambulance.isEmpty()) {
                 log.error("❌ INVARIANT VIOLATION: Session {} references non-existent ambulance {}",
-                    session.getId(), session.getAmbulanceId());
+                        session.getId(), session.getAmbulanceId());
                 issues++;
             }
         }
@@ -130,31 +125,34 @@ public class DriverSessionInvariantValidator {
     }
 
     /**
-     * INVARIANT 3: Drivers with ON_TRIP status must have an active ACCEPTED assignment
+     * INVARIANT 3: Drivers with ON_TRIP status must have an active ACCEPTED
+     * assignment
      */
     private int validateOnTripDriversHaveActiveAssignments() {
         log.debug("Checking: ON_TRIP drivers have active assignments...");
-        List<DriverSession> onTripSessions = sessionRepository.findAll().stream()
+        List<DriverSession> onTripSessions = sessionRepository.findActiveSessions().stream()
                 .filter(s -> s.getStatus() == DriverSessionStatus.ON_TRIP)
                 .toList();
+
+        List<EmergencyAssignment> allAcceptedAssignments = assignmentRepository
+                .findByStatus(EmergencyAssignmentStatus.ACCEPTED);
 
         int issues = 0;
         for (DriverSession session : onTripSessions) {
             // Check if driver has an ACCEPTED assignment
-            List<EmergencyAssignment> activeAssignments = assignmentRepository.findAll().stream()
+            List<EmergencyAssignment> activeAssignments = allAcceptedAssignments.stream()
                     .filter(a -> session.getDriverId().equals(a.getDriverId()))
-                    .filter(a -> a.getStatus() == EmergencyAssignmentStatus.ACCEPTED)
                     .toList();
 
             if (activeAssignments.isEmpty()) {
                 log.error("❌ INVARIANT VIOLATION: Driver {} is ON_TRIP (Session {}) but has no ACCEPTED assignment",
-                    session.getDriverId(), session.getId());
+                        session.getDriverId(), session.getId());
                 log.error("   Session details: Ambulance {}, Started {}, Emergencies handled {}",
-                    session.getAmbulanceId(), session.getSessionStartTime(), session.getEmergenciesHandled());
+                        session.getAmbulanceId(), session.getSessionStartTime(), session.getEmergenciesHandled());
                 issues++;
             } else if (activeAssignments.size() > 1) {
                 log.error("❌ INVARIANT VIOLATION: Driver {} has {} ACCEPTED assignments (expected: 1)",
-                    session.getDriverId(), activeAssignments.size());
+                        session.getDriverId(), activeAssignments.size());
                 issues++;
             }
         }
@@ -170,28 +168,25 @@ public class DriverSessionInvariantValidator {
      */
     private int validateMultipleActiveSessionsPerDriver() {
         log.debug("Checking: No driver has multiple active sessions...");
-        List<DriverSession> allActiveSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .toList();
+        List<DriverSession> allActiveSessions = sessionRepository.findActiveSessions();
 
         int issues = 0;
         var driverSessionCount = allActiveSessions.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
-                    DriverSession::getDriverId,
-                    java.util.stream.Collectors.counting()
-                ));
+                        DriverSession::getDriverId,
+                        java.util.stream.Collectors.counting()));
 
         for (var entry : driverSessionCount.entrySet()) {
             if (entry.getValue() > 1) {
                 log.error("❌ INVARIANT VIOLATION: Driver {} has {} active sessions (expected: 1)",
-                    entry.getKey(), entry.getValue());
-                
+                        entry.getKey(), entry.getValue());
+
                 // Log details of conflicting sessions
                 allActiveSessions.stream()
                         .filter(s -> s.getDriverId().equals(entry.getKey()))
                         .forEach(s -> log.error("   - Session {}: Ambulance {}, Status {}, Started {}",
-                            s.getId(), s.getAmbulanceId(), s.getStatus(), s.getSessionStartTime()));
-                
+                                s.getId(), s.getAmbulanceId(), s.getStatus(), s.getSessionStartTime()));
+
                 issues++;
             }
         }
@@ -207,34 +202,32 @@ public class DriverSessionInvariantValidator {
      */
     private int validateMultipleActiveSessionsPerAmbulance() {
         log.debug("Checking: No ambulance has multiple active sessions...");
-        List<DriverSession> allActiveSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .toList();
+        List<DriverSession> allActiveSessions = sessionRepository.findActiveSessions();
 
         int issues = 0;
         var ambulanceSessionCount = allActiveSessions.stream()
                 .collect(java.util.stream.Collectors.groupingBy(
-                    DriverSession::getAmbulanceId,
-                    java.util.stream.Collectors.counting()
-                ));
+                        DriverSession::getAmbulanceId,
+                        java.util.stream.Collectors.counting()));
 
         for (var entry : ambulanceSessionCount.entrySet()) {
             if (entry.getValue() > 1) {
                 log.error("❌ INVARIANT VIOLATION: Ambulance {} has {} active sessions (expected: 1)",
-                    entry.getKey(), entry.getValue());
-                
+                        entry.getKey(), entry.getValue());
+
                 // Log details of conflicting sessions
                 allActiveSessions.stream()
                         .filter(s -> s.getAmbulanceId().equals(entry.getKey()))
                         .forEach(s -> log.error("   - Session {}: Driver {}, Status {}, Started {}",
-                            s.getId(), s.getDriverId(), s.getStatus(), s.getSessionStartTime()));
-                
+                                s.getId(), s.getDriverId(), s.getStatus(), s.getSessionStartTime()));
+
                 issues++;
             }
         }
 
         if (issues == 0) {
-            log.debug("✅ No ambulance has multiple active sessions ({} unique ambulances)", ambulanceSessionCount.size());
+            log.debug("✅ No ambulance has multiple active sessions ({} unique ambulances)",
+                    ambulanceSessionCount.size());
         }
         return issues;
     }
@@ -244,18 +237,16 @@ public class DriverSessionInvariantValidator {
      */
     private int validateSessionsWithBlockedDrivers() {
         log.debug("Checking: No active session with blocked drivers...");
-        List<DriverSession> activeSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .toList();
+        List<DriverSession> activeSessions = sessionRepository.findActiveSessions();
 
         int issues = 0;
         for (DriverSession session : activeSessions) {
             Optional<User> driverOpt = userRepository.findById(session.getDriverId());
             if (driverOpt.isPresent() && driverOpt.get().isBlocked()) {
                 log.error("❌ INVARIANT VIOLATION: Active session {} has blocked driver {}",
-                    session.getId(), session.getDriverId());
+                        session.getId(), session.getDriverId());
                 log.error("   Session: Ambulance {}, Status {}, Started {}",
-                    session.getAmbulanceId(), session.getStatus(), session.getSessionStartTime());
+                        session.getAmbulanceId(), session.getStatus(), session.getSessionStartTime());
                 issues++;
             }
         }
@@ -271,9 +262,7 @@ public class DriverSessionInvariantValidator {
      */
     private int validateSessionsWithUnverifiedDrivers() {
         log.debug("Checking: All active sessions have verified drivers...");
-        List<DriverSession> activeSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .toList();
+        List<DriverSession> activeSessions = sessionRepository.findActiveSessions();
 
         int issues = 0;
         for (DriverSession session : activeSessions) {
@@ -282,7 +271,7 @@ public class DriverSessionInvariantValidator {
                 User driver = driverOpt.get();
                 if (driver.getDriverVerificationStatus() != DriverVerificationStatus.VERIFIED) {
                     log.error("❌ INVARIANT VIOLATION: Active session {} has unverified driver {} (status: {})",
-                        session.getId(), session.getDriverId(), driver.getDriverVerificationStatus());
+                            session.getId(), session.getDriverId(), driver.getDriverVerificationStatus());
                     issues++;
                 }
             }
@@ -295,23 +284,22 @@ public class DriverSessionInvariantValidator {
     }
 
     /**
-     * SANITY CHECK: Warn about very old active sessions (possible crash recovery issue)
+     * SANITY CHECK: Warn about very old active sessions (possible crash recovery
+     * issue)
      */
     private int validateStaleActiveSessions() {
         log.debug("Checking: No stale active sessions (>24 hours)...");
         LocalDateTime cutoff = LocalDateTime.now().minusHours(24);
-        List<DriverSession> staleSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .filter(s -> s.getSessionStartTime().isBefore(cutoff))
-                .toList();
+        List<DriverSession> staleSessions = sessionRepository.findStaleSessions(cutoff);
 
         int issues = 0;
         for (DriverSession session : staleSessions) {
             Duration age = Duration.between(session.getSessionStartTime(), LocalDateTime.now());
             log.warn("⚠️  STALE SESSION: Session {} has been active for {} hours (Driver {}, Ambulance {}, Status {})",
-                session.getId(), age.toHours(), session.getDriverId(), session.getAmbulanceId(), session.getStatus());
+                    session.getId(), age.toHours(), session.getDriverId(), session.getAmbulanceId(),
+                    session.getStatus());
             log.warn("   Started: {}, Emergencies handled: {}",
-                session.getSessionStartTime(), session.getEmergenciesHandled());
+                    session.getSessionStartTime(), session.getEmergenciesHandled());
             issues++;
         }
 
@@ -326,15 +314,13 @@ public class DriverSessionInvariantValidator {
     /**
      * INVARIANT 8: Active ONLINE/ON_TRIP sessions should have fresh GPS heartbeat
      * 
-     * CRITICAL: Stale heartbeats indicate crashed apps, dead phones, or network issues.
+     * CRITICAL: Stale heartbeats indicate crashed apps, dead phones, or network
+     * issues.
      * These drivers should be auto-marked OFFLINE by StaleDriverDetectionService.
      */
     private int validateStaleHeartbeats() {
         log.debug("Checking: Active sessions have fresh GPS heartbeat (<30 seconds)...");
-        List<DriverSession> activeSessions = sessionRepository.findAll().stream()
-                .filter(DriverSession::isActive)
-                .filter(s -> s.getStatus() == DriverSessionStatus.ONLINE || s.getStatus() == DriverSessionStatus.ON_TRIP)
-                .toList();
+        List<DriverSession> activeSessions = sessionRepository.findActiveSessions();
 
         int issues = 0;
         int noHeartbeatCount = 0;
@@ -343,23 +329,24 @@ public class DriverSessionInvariantValidator {
         for (DriverSession session : activeSessions) {
             if (session.getLastHeartbeat() == null) {
                 log.warn("⚠️  MISSING HEARTBEAT: Session {} (Driver {}, Ambulance {}) has NEVER sent GPS heartbeat",
-                    session.getId(), session.getDriverId(), session.getAmbulanceId());
+                        session.getId(), session.getDriverId(), session.getAmbulanceId());
                 log.warn("   Status: {}, Started: {}, Location: ({}, {})",
-                    session.getStatus(), session.getSessionStartTime(),
-                    session.getCurrentLat(), session.getCurrentLng());
+                        session.getStatus(), session.getSessionStartTime(),
+                        session.getCurrentLat(), session.getCurrentLng());
                 noHeartbeatCount++;
                 issues++;
             } else if (session.isStale()) {
-                long secondsSinceHeartbeat = Duration.between(session.getLastHeartbeat(), LocalDateTime.now()).getSeconds();
+                long secondsSinceHeartbeat = Duration.between(session.getLastHeartbeat(), LocalDateTime.now())
+                        .getSeconds();
                 log.warn("⚠️  STALE HEARTBEAT: Session {} (Driver {}, Ambulance {}) last GPS was {} seconds ago",
-                    session.getId(), session.getDriverId(), session.getAmbulanceId(), secondsSinceHeartbeat);
+                        session.getId(), session.getDriverId(), session.getAmbulanceId(), secondsSinceHeartbeat);
                 log.warn("   Status: {}, Last heartbeat: {}, Should be auto-marked OFFLINE",
-                    session.getStatus(), session.getLastHeartbeat());
-                
+                        session.getStatus(), session.getLastHeartbeat());
+
                 if (session.getStatus() == DriverSessionStatus.ON_TRIP) {
                     log.error("🚨 CRITICAL: Driver is ON_TRIP with stale heartbeat! Emergency may be stranded.");
                 }
-                
+
                 staleHeartbeatCount++;
                 issues++;
             }
@@ -369,10 +356,10 @@ public class DriverSessionInvariantValidator {
             log.debug("✅ All active sessions have fresh heartbeat ({} checked)", activeSessions.size());
         } else {
             log.warn("⚠️  Heartbeat issues: {} sessions with no heartbeat, {} with stale heartbeat",
-                noHeartbeatCount, staleHeartbeatCount);
+                    noHeartbeatCount, staleHeartbeatCount);
             log.warn("⚠️  StaleDriverDetectionService should auto-fix these within 15 seconds");
         }
-        
+
         return issues;
     }
 }

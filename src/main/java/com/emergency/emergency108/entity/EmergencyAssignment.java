@@ -12,12 +12,12 @@ public class EmergencyAssignment {
     private Long id;
 
     // Which emergency
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "emergency_id")
     private Emergency emergency;
 
     // Which ambulance
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "ambulance_id")
     private Ambulance ambulance;
 
@@ -52,7 +52,7 @@ public class EmergencyAssignment {
      * Destination hospital assigned when patient is picked up.
      * Selected automatically as the nearest hospital to patient location.
      */
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "destination_hospital_id")
     private Hospital destinationHospital;
 

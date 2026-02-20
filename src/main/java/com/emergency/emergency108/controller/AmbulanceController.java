@@ -59,7 +59,7 @@ public class AmbulanceController {
             // Auto-generate code if not provided
             if (ambulance.getCode() == null || ambulance.getCode().isEmpty()) {
                 // Example: AMB-8374
-                String randomCode = "AMB-" + (1000 + new java.util.Random().nextInt(9000));
+                String randomCode = "AMB-" + java.util.concurrent.ThreadLocalRandom.current().nextInt(1000, 10000);
                 ambulance.setCode(randomCode);
             }
 

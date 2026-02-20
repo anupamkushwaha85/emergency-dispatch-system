@@ -4,7 +4,6 @@ import com.emergency.emergency108.auth.security.AuthContext;
 import com.emergency.emergency108.entity.*;
 import com.emergency.emergency108.event.AssignmentEvent;
 import com.emergency.emergency108.event.DomainEventPublisher;
-import com.emergency.emergency108.exception.NoAmbulancesAvailableException;
 import com.emergency.emergency108.metrics.DomainMetrics;
 import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
@@ -310,10 +309,6 @@ public class EmergencyAssignmentService {
             metrics.assignmentRejected();
 
             // Try next ambulance
-            List<Long> triedAmbulanceIds = assignmentRepository.findByEmergencyId(emergency.getId())
-                    .stream()
-                    .map(a -> a.getAmbulance().getId())
-                    .toList();
 
             try {
                 // Re-dispatch to next available driver

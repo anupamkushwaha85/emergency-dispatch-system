@@ -41,4 +41,8 @@ public interface EmergencyRepository extends JpaRepository<Emergency, Long> {
 
         List<Emergency> findByStatusIn(List<EmergencyStatus> statuses);
 
+        List<Emergency> findByStatusNotIn(List<EmergencyStatus> statuses);
+
+        long countByStatusNotIn(List<EmergencyStatus> statuses);
+
 }
