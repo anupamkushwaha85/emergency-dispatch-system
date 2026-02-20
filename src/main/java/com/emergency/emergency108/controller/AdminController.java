@@ -10,7 +10,11 @@ import com.emergency.emergency108.entity.UserRole;
 import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.UserRepository;
 import com.emergency.emergency108.repository.AmbulanceRepository;
+import com.emergency.emergency108.entity.Ambulance;
 import com.emergency.emergency108.entity.AmbulanceStatus;
+import com.emergency.emergency108.entity.DriverSession;
+import com.emergency.emergency108.service.DriverSessionService;
+import com.emergency.emergency108.entity.DriverSessionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,15 +37,18 @@ public class AdminController {
     private final UserRepository userRepository;
     private final EmergencyRepository emergencyRepository;
     private final AmbulanceRepository ambulanceRepository;
+    private final DriverSessionService driverSessionService;
 
     public AdminController(TokenService tokenService,
             UserRepository userRepository,
             EmergencyRepository emergencyRepository,
-            AmbulanceRepository ambulanceRepository) {
+            AmbulanceRepository ambulanceRepository,
+            DriverSessionService driverSessionService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.emergencyRepository = emergencyRepository;
         this.ambulanceRepository = ambulanceRepository;
+        this.driverSessionService = driverSessionService;
     }
 
     /**
@@ -245,10 +252,89 @@ public class AdminController {
 
             return ResponseEntity.ok(drivers);
 
+        } catch (RuntimeException e) {
+            logger.error("❌ Error fetching verified drivers: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (Exception e) {
             logger.error("❌ Error fetching verified drivers: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to fetch verified drivers");
+        }
+    }
+
+    /**
+     * Get all currently online/active drivers
+     * GET /api/admin/online-drivers
+     */
+    @GetMapping("/online-drivers")
+    public ResponseEntity<?> getOnlineDrivers(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            AuthTokenPayload payload = tokenService.validateAndParse(token);
+
+            User admin = userRepository.findById(payload.getUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (admin.getRole() != UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Only admins can view online drivers");
+            }
+
+            List<DriverSession> onlineSessions = driverSessionService.getAllOnlineDrivers();
+
+            List<Long> driverIds = onlineSessions.stream()
+                    .map(DriverSession::getDriverId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            List<User> driversList = userRepository.findAllById(driverIds);
+            Map<Long, User> driverMap = driversList.stream()
+                    .collect(Collectors.toMap(User::getId, d -> d));
+
+            List<Long> ambulanceIds = onlineSessions.stream()
+                    .map(DriverSession::getAmbulanceId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            List<Ambulance> ambulancesList = ambulanceRepository.findAllById(ambulanceIds);
+            Map<Long, Ambulance> ambulanceMap = ambulancesList.stream()
+                    .collect(Collectors.toMap(Ambulance::getId, a -> a));
+
+            List<Map<String, Object>> response = onlineSessions.stream()
+                    .map(session -> {
+                        Map<String, Object> sessionData = new HashMap<>();
+                        sessionData.put("sessionId", session.getId());
+                        sessionData.put("driverId", session.getDriverId());
+                        sessionData.put("ambulanceId", session.getAmbulanceId());
+                        sessionData.put("status", session.getStatus());
+                        sessionData.put("latitude", session.getCurrentLat());
+                        sessionData.put("longitude", session.getCurrentLng());
+                        sessionData.put("sessionStartTime", session.getSessionStartTime());
+
+                        // Populate driver info
+                        User driver = driverMap.get(session.getDriverId());
+                        if (driver != null) {
+                            sessionData.put("driverName", driver.getName());
+                            sessionData.put("driverPhone", driver.getPhone());
+                        }
+
+                        // Populate ambulance info
+                        Ambulance amb = ambulanceMap.get(session.getAmbulanceId());
+                        if (amb != null) {
+                            sessionData.put("licensePlate", amb.getLicensePlate());
+                        }
+
+                        return sessionData;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            logger.error("❌ Error fetching online drivers: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("❌ Error fetching online drivers: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to fetch online drivers");
         }
     }
 
@@ -293,6 +379,9 @@ public class AdminController {
 
             return ResponseEntity.ok(response);
 
+        } catch (RuntimeException e) {
+            logger.error("❌ Error fetching dashboard stats: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (Exception e) {
             logger.error("❌ Error fetching dashboard stats: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -326,6 +415,9 @@ public class AdminController {
 
             return ResponseEntity.ok(active);
 
+        } catch (RuntimeException e) {
+            logger.error("❌ Error fetching active emergencies: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         } catch (Exception e) {
             logger.error("❌ Error fetching active emergencies: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
