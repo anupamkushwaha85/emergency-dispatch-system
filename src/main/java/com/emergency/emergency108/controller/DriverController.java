@@ -5,15 +5,20 @@ import com.emergency.emergency108.auth.security.AuthContext;
 import com.emergency.emergency108.dto.LocationUpdateRequest;
 import com.emergency.emergency108.dto.StartShiftRequest;
 import com.emergency.emergency108.entity.DriverSession;
+import com.emergency.emergency108.entity.Emergency;
 import com.emergency.emergency108.entity.EmergencyAssignment;
+import com.emergency.emergency108.entity.EmergencyStatus;
 import com.emergency.emergency108.entity.Hospital;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
+import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.HospitalRepository;
 import com.emergency.emergency108.service.DriverSessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -35,16 +40,19 @@ public class DriverController {
     private final AuthGuard authGuard;
     private final HospitalRepository hospitalRepository;
     private final EmergencyAssignmentRepository assignmentRepository;
+    private final EmergencyRepository emergencyRepository;
 
     public DriverController(
             DriverSessionService sessionService,
             AuthGuard authGuard,
             HospitalRepository hospitalRepository,
-            EmergencyAssignmentRepository assignmentRepository) {
+            EmergencyAssignmentRepository assignmentRepository,
+            EmergencyRepository emergencyRepository) {
         this.sessionService = sessionService;
         this.authGuard = authGuard;
         this.hospitalRepository = hospitalRepository;
         this.assignmentRepository = assignmentRepository;
+        this.emergencyRepository = emergencyRepository;
     }
 
     /**
@@ -213,6 +221,7 @@ public class DriverController {
      * Body: { "emergencyId": 5, "patientLat": 28.6139, "patientLng": 77.209 }
      */
     @PostMapping("/mark-patient-picked-up")
+    @Transactional
     public ResponseEntity<?> markPatientPickedUp(@RequestBody Map<String, Object> request) {
         authGuard.requireVerifiedDriver();
 
@@ -221,13 +230,25 @@ public class DriverController {
             Double patientLat = Double.valueOf(request.get("patientLat").toString());
             Double patientLng = Double.valueOf(request.get("patientLng").toString());
 
-            // Find assignment
+            // 1. Validate Emergency
+            Emergency emergency = emergencyRepository.findById(emergencyId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Emergency not found"));
+
+            if (emergency.getStatus() != EmergencyStatus.AT_PATIENT) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Invalid flow: Emergency must be 'AT_PATIENT' before marking as picked up.");
+            }
+
+            // 2. Find assignment
             EmergencyAssignment assignment = assignmentRepository.findTopByEmergencyIdOrderByAssignedAtDesc(emergencyId)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
                             "Assignment not found"));
 
-            // Find nearest hospital
+            // 3. Find nearest hospital
             List<Hospital> nearestHospitals = hospitalRepository.findNearestHospitals(
                     patientLat,
                     patientLng,
@@ -236,12 +257,19 @@ public class DriverController {
             if (nearestHospitals.isEmpty()) {
                 throw new ResponseStatusException(
                         HttpStatus.INTERNAL_SERVER_ERROR,
-                        "No hospitals found in database");
+                        "No hospitals found in database. Administrator must add a hospital first.");
             }
 
+            // 4. Update Assignment and root Emergency State
             Hospital nearestHospital = nearestHospitals.get(0);
             assignment.setDestinationHospital(nearestHospital);
             assignmentRepository.save(assignment);
+
+            emergency.setStatus(EmergencyStatus.TO_HOSPITAL);
+            emergencyRepository.save(emergency);
+
+            log.info("Driver {}: Picked up patient for emergency {}. Routing to Hospital {}.",
+                    AuthContext.getUserId(), emergencyId, nearestHospital.getName());
 
             return ResponseEntity.ok(Map.of(
                     "message", "Patient picked up, heading to hospital",
@@ -253,7 +281,7 @@ public class DriverController {
                             "address", nearestHospital.getAddress())));
 
         } catch (NumberFormatException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid coordinates");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid coordinate payload");
         }
     }
 
@@ -265,6 +293,7 @@ public class DriverController {
      * Body: { "emergencyId": 5, "currentLat": 28.5672, "currentLng": 77.2100 }
      */
     @PostMapping("/complete-mission")
+    @Transactional
     public ResponseEntity<?> completeMission(@RequestBody Map<String, Object> request) {
         authGuard.requireVerifiedDriver();
 
@@ -273,7 +302,19 @@ public class DriverController {
             Double currentLat = Double.valueOf(request.get("currentLat").toString());
             Double currentLng = Double.valueOf(request.get("currentLng").toString());
 
-            // Find assignment
+            // 1. Validate Emergency state
+            Emergency emergency = emergencyRepository.findById(emergencyId)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Emergency not found"));
+
+            if (emergency.getStatus() != EmergencyStatus.TO_HOSPITAL) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Invalid flow: Emergency must be 'TO_HOSPITAL' before completing the mission.");
+            }
+
+            // 2. Find assignment & Verify destination protocol
             EmergencyAssignment assignment = assignmentRepository.findTopByEmergencyIdOrderByAssignedAtDesc(emergencyId)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
@@ -283,10 +324,10 @@ public class DriverController {
             if (hospital == null) {
                 throw new ResponseStatusException(
                         HttpStatus.BAD_REQUEST,
-                        "No hospital assigned. Pick up patient first.");
+                        "No hospital assigned. Pick up patient first via protocol prior to completion.");
             }
 
-            // Calculate distance using Haversine formula
+            // 3. Calculate distance to prevent false-completion
             double distance = calculateDistance(
                     currentLat,
                     currentLng,
@@ -296,23 +337,31 @@ public class DriverController {
             if (distance > 0.1) { // 0.1 km = 100 meters
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                         "error", "Too far from hospital",
-                        "message", String.format("You must be within 100m of %s. Current distance: %.0fm",
+                        "message",
+                        String.format("You must be within 100m of %s to mark complete. Current distance: %.0fm",
                                 hospital.getName(), distance * 1000),
                         "distanceKm", distance,
                         "requiredDistanceKm", 0.1));
             }
 
-            // Complete mission
+            // 4. Complete the Emergency and Assignment Lifecycle
             assignment.setCompletedAt(LocalDateTime.now());
             assignmentRepository.save(assignment);
 
+            emergency.setStatus(EmergencyStatus.COMPLETED);
+            emergencyRepository.save(emergency);
+
+            log.info("Driver {}: Completed mission for emergency {} at hospital {}.",
+                    AuthContext.getUserId(), emergencyId, hospital.getName());
+
             return ResponseEntity.ok(Map.of(
-                    "message", "Mission completed successfully",
+                    "message", "Mission completed successfully. Emergency closed.",
                     "hospital", hospital.getName(),
-                    "distanceKm", distance));
+                    "distanceKm", distance,
+                    "finalStatus", "COMPLETED"));
 
         } catch (NumberFormatException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid coordinates");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid coordinate payload");
         }
     }
 

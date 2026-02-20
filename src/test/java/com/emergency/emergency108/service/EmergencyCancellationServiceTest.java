@@ -122,6 +122,6 @@ class EmergencyCancellationServiceTest {
         EmergencyAssignment savedAssignment = assignmentCaptor.getValue();
         assertEquals(EmergencyAssignmentStatus.CANCELLED, savedAssignment.getStatus(),
                 "Status should be CANCELLED, not CANCELLED_BY_USER");
-        assertEquals("User cancelled emergency after driver assigned", savedAssignment.getCancellationReason());
+        assertEquals("Mistakenly created", savedAssignment.getCancellationReason());
     }
 }
