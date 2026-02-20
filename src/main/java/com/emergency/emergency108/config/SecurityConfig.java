@@ -19,6 +19,10 @@ public class SecurityConfig {
 
                 http
                                 .csrf(csrf -> csrf.disable())
+                                .sessionManagement(session -> session.sessionCreationPolicy(
+                                                org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
+                                .httpBasic(basic -> basic.disable())
+                                .formLogin(form -> form.disable())
                                 // Spring Security permissive - auth is handled by AuthGuard in controllers
                                 // This allows our custom auth exceptions to be thrown and handled properly
                                 .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
