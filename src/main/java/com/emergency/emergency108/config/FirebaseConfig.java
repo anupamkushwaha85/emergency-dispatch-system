@@ -38,8 +38,15 @@ public class FirebaseConfig {
             } else {
                 // Local: Use File
                 log.info("Initializing Firebase from Classpath Resource");
-                InputStream serviceAccount = new ClassPathResource("firebase-service-account.json").getInputStream();
-                credentials = GoogleCredentials.fromStream(serviceAccount);
+                try {
+                    InputStream serviceAccount = new ClassPathResource("firebase-service-account.json")
+                            .getInputStream();
+                    credentials = GoogleCredentials.fromStream(serviceAccount);
+                } catch (java.io.FileNotFoundException e) {
+                    log.warn(
+                            "Firebase credentials not found. Firebase will not be initialized. (Expected behavior in CI/test environments without FIREBASE_SERVICE_ACCOUNT_BASE64 set)");
+                    return; // Skip initialization gracefully
+                }
             }
 
             FirebaseOptions options = FirebaseOptions.builder()
