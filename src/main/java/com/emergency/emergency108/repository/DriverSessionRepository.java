@@ -14,82 +14,95 @@ import java.util.Optional;
 @Repository
 public interface DriverSessionRepository extends JpaRepository<DriverSession, Long> {
 
-    /**
-     * Find active session for a driver (ONLINE or ON_TRIP)
-     */
-    @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
-           "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
-           "AND ds.sessionEndTime IS NULL")
-    Optional<DriverSession> findActiveSessionByDriverId(@Param("driverId") Long driverId);
+       /**
+        * Find active session for a driver (ONLINE or ON_TRIP)
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
+                     "AND ds.sessionEndTime IS NULL")
+       Optional<DriverSession> findActiveSessionByDriverId(@Param("driverId") Long driverId);
 
-    /**
-     * Find active session for an ambulance (ONLINE or ON_TRIP)
-     */
-    @Query("SELECT ds FROM DriverSession ds WHERE ds.ambulanceId = :ambulanceId " +
-           "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
-           "AND ds.sessionEndTime IS NULL")
-    Optional<DriverSession> findActiveSessionByAmbulanceId(@Param("ambulanceId") Long ambulanceId);
+       /**
+        * Find active session for an ambulance (ONLINE or ON_TRIP)
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.ambulanceId = :ambulanceId " +
+                     "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
+                     "AND ds.sessionEndTime IS NULL")
+       Optional<DriverSession> findActiveSessionByAmbulanceId(@Param("ambulanceId") Long ambulanceId);
 
-    /**
-     * Find all ONLINE drivers (available for assignment)
-     * Must be VERIFIED and have ONLINE session
-     */
-    @Query("SELECT ds FROM DriverSession ds, User u " +
-           "WHERE ds.driverId = u.id " +
-           "AND ds.status = 'ONLINE' " +
-           "AND ds.sessionEndTime IS NULL " +
-           "AND u.driverVerificationStatus = 'VERIFIED' " +
-           "ORDER BY ds.sessionStartTime ASC")
-    List<DriverSession> findAllOnlineDrivers();
+       /**
+        * Find all ONLINE drivers (available for assignment)
+        * Must be VERIFIED and have ONLINE session
+        */
+       @Query("SELECT ds FROM DriverSession ds, User u " +
+                     "WHERE ds.driverId = u.id " +
+                     "AND ds.status = 'ONLINE' " +
+                     "AND ds.sessionEndTime IS NULL " +
+                     "AND u.driverVerificationStatus = 'VERIFIED' " +
+                     "ORDER BY ds.sessionStartTime ASC")
+       List<DriverSession> findAllOnlineDrivers();
 
-    /**
-     * Find session by driver and ambulance (for validation)
-     */
-    @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
-           "AND ds.ambulanceId = :ambulanceId " +
-           "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
-           "AND ds.sessionEndTime IS NULL")
-    Optional<DriverSession> findActiveSessionByDriverAndAmbulance(
-        @Param("driverId") Long driverId,
-        @Param("ambulanceId") Long ambulanceId
-    );
+       /**
+        * Find eligible ONLINE drivers with recent heartbeat or recent session start
+        * Must be VERIFIED, have ONLINE session, and be active within the cutoff time.
+        */
+       @Query("SELECT ds FROM DriverSession ds, User u " +
+                     "WHERE ds.driverId = u.id " +
+                     "AND ds.status = 'ONLINE' " +
+                     "AND ds.sessionEndTime IS NULL " +
+                     "AND u.driverVerificationStatus = 'VERIFIED' " +
+                     "AND (ds.lastHeartbeat >= :cutoffTime OR (ds.lastHeartbeat IS NULL AND ds.sessionStartTime >= :cutoffTime)) "
+                     +
+                     "ORDER BY ds.sessionStartTime ASC")
+       List<DriverSession> findEligibleOnlineDrivers(@Param("cutoffTime") LocalDateTime cutoffTime);
 
-    /**
-     * Find stale sessions (for cleanup job)
-     * Sessions older than 24 hours that are still marked active
-     */
-    @Query("SELECT ds FROM DriverSession ds WHERE ds.status IN ('ONLINE', 'ON_TRIP') " +
-           "AND ds.sessionStartTime < :cutoffTime " +
-           "AND ds.sessionEndTime IS NULL")
-    List<DriverSession> findStaleSessions(@Param("cutoffTime") LocalDateTime cutoffTime);
+       /**
+        * Find session by driver and ambulance (for validation)
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "AND ds.ambulanceId = :ambulanceId " +
+                     "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
+                     "AND ds.sessionEndTime IS NULL")
+       Optional<DriverSession> findActiveSessionByDriverAndAmbulance(
+                     @Param("driverId") Long driverId,
+                     @Param("ambulanceId") Long ambulanceId);
 
-    /**
-     * Count active sessions for a driver
-     */
-    @Query("SELECT COUNT(ds) FROM DriverSession ds WHERE ds.driverId = :driverId " +
-           "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
-           "AND ds.sessionEndTime IS NULL")
-    long countActiveSessionsByDriverId(@Param("driverId") Long driverId);
+       /**
+        * Find stale sessions (for cleanup job)
+        * Sessions older than 24 hours that are still marked active
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.status IN ('ONLINE', 'ON_TRIP') " +
+                     "AND ds.sessionStartTime < :cutoffTime " +
+                     "AND ds.sessionEndTime IS NULL")
+       List<DriverSession> findStaleSessions(@Param("cutoffTime") LocalDateTime cutoffTime);
 
-    /**
-     * Count active sessions for an ambulance
-     */
-    @Query("SELECT COUNT(ds) FROM DriverSession ds WHERE ds.ambulanceId = :ambulanceId " +
-           "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
-           "AND ds.sessionEndTime IS NULL")
-    long countActiveSessionsByAmbulanceId(@Param("ambulanceId") Long ambulanceId);
+       /**
+        * Count active sessions for a driver
+        */
+       @Query("SELECT COUNT(ds) FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
+                     "AND ds.sessionEndTime IS NULL")
+       long countActiveSessionsByDriverId(@Param("driverId") Long driverId);
 
-    /**
-     * Find all sessions for a driver (history)
-     */
-    @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
-           "ORDER BY ds.sessionStartTime DESC")
-    List<DriverSession> findAllByDriverId(@Param("driverId") Long driverId);
+       /**
+        * Count active sessions for an ambulance
+        */
+       @Query("SELECT COUNT(ds) FROM DriverSession ds WHERE ds.ambulanceId = :ambulanceId " +
+                     "AND ds.status IN ('ONLINE', 'ON_TRIP') " +
+                     "AND ds.sessionEndTime IS NULL")
+       long countActiveSessionsByAmbulanceId(@Param("ambulanceId") Long ambulanceId);
 
-    /**
-     * Find all active sessions (ONLINE or ON_TRIP) for stale detection
-     */
-    @Query("SELECT ds FROM DriverSession ds WHERE ds.status IN ('ONLINE', 'ON_TRIP') " +
-           "AND ds.sessionEndTime IS NULL")
-    List<DriverSession> findActiveSessions();
+       /**
+        * Find all sessions for a driver (history)
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "ORDER BY ds.sessionStartTime DESC")
+       List<DriverSession> findAllByDriverId(@Param("driverId") Long driverId);
+
+       /**
+        * Find all active sessions (ONLINE or ON_TRIP) for stale detection
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.status IN ('ONLINE', 'ON_TRIP') " +
+                     "AND ds.sessionEndTime IS NULL")
+       List<DriverSession> findActiveSessions();
 }

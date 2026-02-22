@@ -95,7 +95,7 @@ class EmergencyDispatchServiceTest {
         ambulance.setId(500L);
 
         when(emergencyRepository.findById(emergencyId)).thenReturn(Optional.of(emergency));
-        when(driverSessionRepository.findAllOnlineDrivers()).thenReturn(onlineSessions);
+        when(driverSessionRepository.findEligibleOnlineDrivers(any(LocalDateTime.class))).thenReturn(onlineSessions);
 
         // Mock that driver 101 has rejected this emergency
         when(assignmentRepository.findRejectedDriverIdsByEmergencyId(emergencyId))

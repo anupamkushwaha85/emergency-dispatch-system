@@ -57,9 +57,14 @@ public class EmergencyDispatchService {
                 Emergency emergency = emergencyRepository.findById(emergencyId)
                                 .orElseThrow(() -> new IllegalArgumentException("Emergency not found: " + emergencyId));
 
-                // Find VERIFIED + ONLINE drivers with recent heartbeat
-                List<DriverSession> onlineSessions = driverSessionRepository.findAllOnlineDrivers();
-                log.info("Found {} online sessions from query", onlineSessions.size());
+                // Filter for VERIFIED drivers with fresh heartbeat (< 1 hour for testing)
+                // We use a 1-hour window explicitly
+                LocalDateTime oneHourAgo = LocalDateTime.now().minusSeconds(3600);
+
+                // Fetch only eligible drivers natively from the database to avoid O(N) memory
+                // scaling loophole
+                List<DriverSession> onlineSessions = driverSessionRepository.findEligibleOnlineDrivers(oneHourAgo);
+                log.info("Found {} eligible online sessions from database query", onlineSessions.size());
 
                 // Exclude drivers who have already rejected this emergency
                 List<Long> rejectedDriverIds = assignmentRepository.findRejectedDriverIdsByEmergencyId(emergencyId);
@@ -80,39 +85,7 @@ public class EmergencyDispatchService {
                                                         + emergency.getStatus());
                 }
 
-                // Filter for VERIFIED drivers with fresh heartbeat (< 1 hour for testing)
-                // We use a 1-hour window explicitly
-                LocalDateTime oneHourAgo = LocalDateTime.now().minusSeconds(3600);
-
-                List<DriverSession> eligibleSessions = onlineSessions.stream()
-                                .filter(session -> {
-                                        // LENIENT CHECK: Handle null heartbeat
-                                        if (session.getLastHeartbeat() == null) {
-                                                // If start time is within 1 hour, keep it
-                                                if (session.getSessionStartTime().isAfter(oneHourAgo)) {
-                                                        return true;
-                                                }
-                                                log.warn("Session {} has null heartbeat and old start time - filtering out",
-                                                                session.getId());
-                                                return false;
-                                        }
-                                        if (!session.getLastHeartbeat().isAfter(oneHourAgo)) {
-                                                log.warn("Session {} heartbeat is stale (older than 1h) - filtering out",
-                                                                session.getId());
-                                                return false;
-                                        }
-                                        return true;
-                                })
-                                .filter(session -> {
-                                        if (session.getStatus() != DriverSessionStatus.ONLINE) {
-                                                // Log reduced to debug to reduce noise
-                                                log.debug("Session {} status is {} not ONLINE - filtering out",
-                                                                session.getId(), session.getStatus());
-                                                return false;
-                                        }
-                                        return true;
-                                })
-                                .collect(Collectors.toList());
+                List<DriverSession> eligibleSessions = onlineSessions;
 
                 log.info("After filtering: {} eligible sessions (Window: 1 Hour)", eligibleSessions.size());
 

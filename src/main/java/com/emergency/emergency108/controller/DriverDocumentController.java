@@ -41,8 +41,8 @@ public class DriverDocumentController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Document data is missing");
         }
 
-        // 500KB limit ~ 700,000 Base64 characters
-        if (request.getDocumentData().length() > 700000) {
+        // 500KB limit + Base64 overhead + Data URI scheme ~ 1,000,000 chars safe limit
+        if (request.getDocumentData().length() > 1000000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Document too large. Max 500KB.");
         }
 

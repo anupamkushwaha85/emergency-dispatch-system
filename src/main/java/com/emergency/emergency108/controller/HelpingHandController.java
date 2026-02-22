@@ -1,5 +1,7 @@
 package com.emergency.emergency108.controller;
 
+import com.emergency.emergency108.auth.guard.AuthGuard;
+import com.emergency.emergency108.auth.security.AuthContext;
 import com.emergency.emergency108.dto.LocationUpdateRequest;
 import com.emergency.emergency108.dto.NearbyEmergencyDTO;
 import com.emergency.emergency108.service.HelpingHandService;
@@ -13,9 +15,11 @@ import java.util.List;
 public class HelpingHandController {
 
     private final HelpingHandService helpingHandService;
+    private final AuthGuard authGuard;
 
-    public HelpingHandController(HelpingHandService helpingHandService) {
+    public HelpingHandController(HelpingHandService helpingHandService, AuthGuard authGuard) {
         this.helpingHandService = helpingHandService;
+        this.authGuard = authGuard;
     }
 
     /**
@@ -24,8 +28,9 @@ public class HelpingHandController {
      */
     @PostMapping("/location")
     public ResponseEntity<Void> updateLocation(
-            @RequestParam Long userId,
             @RequestBody LocationUpdateRequest request) {
+        authGuard.requireAuthenticated();
+        Long userId = AuthContext.getUserId();
         helpingHandService.updateUserLocation(userId, request.getLat(), request.getLng());
         return ResponseEntity.ok().build();
     }
