@@ -13,9 +13,9 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -36,8 +36,10 @@ class DriverSessionServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    private DomainMetrics metrics;
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
+    private DomainMetrics metrics;
     private DriverSessionService sessionService;
 
     private User driver;
@@ -47,7 +49,8 @@ class DriverSessionServiceTest {
     @BeforeEach
     void setUp() {
         metrics = new DomainMetrics(new SimpleMeterRegistry());
-        sessionService = new DriverSessionService(sessionRepository, userRepository, ambulanceRepository, metrics);
+        sessionService = new DriverSessionService(sessionRepository, userRepository, ambulanceRepository, metrics,
+                messagingTemplate);
 
         driver = new User();
         driver.setId(100L);
