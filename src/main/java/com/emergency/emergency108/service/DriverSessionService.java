@@ -1,5 +1,6 @@
 package com.emergency.emergency108.service;
 
+import com.emergency.emergency108.dto.LocationUpdateDTO;
 import com.emergency.emergency108.entity.*;
 import com.emergency.emergency108.metrics.DomainMetrics;
 import com.emergency.emergency108.repository.AmbulanceRepository;
@@ -7,6 +8,7 @@ import com.emergency.emergency108.repository.DriverSessionRepository;
 import com.emergency.emergency108.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,16 +34,19 @@ public class DriverSessionService {
     private final UserRepository userRepository;
     private final AmbulanceRepository ambulanceRepository;
     private final DomainMetrics metrics;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public DriverSessionService(
             DriverSessionRepository sessionRepository,
             UserRepository userRepository,
             AmbulanceRepository ambulanceRepository,
-            DomainMetrics metrics) {
+            DomainMetrics metrics,
+            SimpMessagingTemplate messagingTemplate) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
         this.ambulanceRepository = ambulanceRepository;
         this.metrics = metrics;
+        this.messagingTemplate = messagingTemplate;
     }
 
     /**
@@ -216,6 +221,23 @@ public class DriverSessionService {
         ambulanceRepository.save(ambulance);
 
         log.debug("Updated location and heartbeat for driver {} at ({}, {})", driverId, lat, lng);
+
+        // ── WebSocket broadcast ────────────────────────────────────────────────
+        // Push location to all connected admin dashboards instantly.
+        // This replaces the 10-second HTTP polling on the LiveMap admin page.
+        LocationUpdateDTO locationUpdate = new LocationUpdateDTO(
+                driverId,
+                session.getAmbulanceId(),
+                lat,
+                lng,
+                LocalDateTime.now());
+
+        // Global feed — admin map subscribes here to track all ambulances
+        messagingTemplate.convertAndSend("/topic/live-locations", locationUpdate);
+
+        // Per-driver feed — for future use (e.g. user tracking their own ambulance)
+        messagingTemplate.convertAndSend("/topic/driver/" + driverId, locationUpdate);
+        // ──────────────────────────────────────────────────────────────────────
     }
 
     /**
