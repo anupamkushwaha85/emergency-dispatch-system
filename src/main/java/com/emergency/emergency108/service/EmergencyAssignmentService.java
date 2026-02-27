@@ -1,6 +1,7 @@
 package com.emergency.emergency108.service;
 
 import com.emergency.emergency108.auth.security.AuthContext;
+import com.emergency.emergency108.dto.EmergencyUpdateDTO;
 import com.emergency.emergency108.entity.*;
 import com.emergency.emergency108.event.AssignmentEvent;
 import com.emergency.emergency108.event.DomainEventPublisher;
@@ -8,12 +9,14 @@ import com.emergency.emergency108.metrics.DomainMetrics;
 import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
+import com.emergency.emergency108.repository.UserRepository;
 import com.emergency.emergency108.util.EmergencyAssignmentEmergencyConsistency;
 import com.emergency.emergency108.util.EmergencyAssignmentStateMachine;
 import com.emergency.emergency108.util.EmergencyStateMachine;
 import com.emergency.emergency108.util.InvalidAssignmentStateException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,8 @@ public class EmergencyAssignmentService {
     private final DomainEventPublisher eventPublisher;
     private final DomainMetrics metrics;
     private final DriverSessionService driverSessionService;
+    private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     private static final Logger log = LoggerFactory.getLogger(EmergencyAssignmentService.class);
 
@@ -41,7 +46,9 @@ public class EmergencyAssignmentService {
             EmergencyRepository emergencyRepository,
             DomainEventPublisher eventPublisher,
             DomainMetrics metrics,
-            DriverSessionService driverSessionService) {
+            DriverSessionService driverSessionService,
+            UserRepository userRepository,
+            SimpMessagingTemplate messagingTemplate) {
         this.metrics = metrics;
         this.eventPublisher = eventPublisher;
         this.emergencyRepository = emergencyRepository;
@@ -49,6 +56,8 @@ public class EmergencyAssignmentService {
         this.ambulanceRepository = ambulanceRepository;
         this.assignmentRepository = assignmentRepository;
         this.driverSessionService = driverSessionService;
+        this.userRepository = userRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public boolean isAlreadyAssigned(Long emergencyId) {
@@ -282,6 +291,7 @@ public class EmergencyAssignmentService {
                             "ASSIGNMENT_ACCEPTED",
                             "Driver accepted assignment"));
             metrics.assignmentAccepted();
+            broadcastEmergencyUpdate(emergency, "ASSIGNMENT_ACCEPTED");
 
         } else {
 
@@ -307,6 +317,7 @@ public class EmergencyAssignmentService {
             }
 
             metrics.assignmentRejected();
+            broadcastEmergencyUpdate(emergency, "ASSIGNMENT_REJECTED");
 
             // Try next ambulance
 
@@ -400,6 +411,7 @@ public class EmergencyAssignmentService {
                     ambulance.getId());
         }
         metrics.assignmentCompleted();
+        broadcastEmergencyUpdate(emergency, "ASSIGNMENT_COMPLETED");
 
     }
 
@@ -467,6 +479,7 @@ public class EmergencyAssignmentService {
                         "Driver accepted emergency"));
 
         metrics.assignmentCompleted();
+        broadcastEmergencyUpdate(emergency, "ASSIGNMENT_ACCEPTED");
 
         return assignment;
     }
@@ -519,6 +532,7 @@ public class EmergencyAssignmentService {
         emergency.setStatus(EmergencyStatus.CREATED);
         emergencyRepository.saveAndFlush(emergency);
         log.info("Reset emergency {} status to CREATED for re-dispatch", emergencyId);
+        broadcastEmergencyUpdate(emergency, "ASSIGNMENT_REJECTED");
 
         // Re-dispatch to next available driver
         try {
@@ -551,4 +565,46 @@ public class EmergencyAssignmentService {
                 .orElse(null);
     }
 
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Broadcast emergency status change to /topic/emergency-updates so the admin
+     * dashboard and live map update in real-time.
+     */
+    private void broadcastEmergencyUpdate(Emergency emergency, String eventName) {
+        try {
+            Long assignedDriverId = null;
+            String assignedDriverName = null;
+
+            // Try to find the latest ACCEPTED or ASSIGNED assignment for driver info
+            Optional<EmergencyAssignment> latestAssignment = assignmentRepository
+                    .findTopByEmergencyIdOrderByAssignedAtDesc(emergency.getId());
+
+            if (latestAssignment.isPresent()) {
+                EmergencyAssignment asmt = latestAssignment.get();
+                if (asmt.getDriverId() != null) {
+                    assignedDriverId = asmt.getDriverId();
+                    assignedDriverName = userRepository.findById(assignedDriverId)
+                            .map(User::getName)
+                            .orElse("Driver #" + assignedDriverId);
+                }
+            }
+
+            EmergencyUpdateDTO dto = new EmergencyUpdateDTO(
+                    emergency.getId(),
+                    emergency.getType(),
+                    emergency.getStatus().name(),
+                    emergency.getLatitude(),
+                    emergency.getLongitude(),
+                    assignedDriverId,
+                    assignedDriverName,
+                    eventName);
+
+            messagingTemplate.convertAndSend("/topic/emergency-updates", dto);
+            log.debug("Broadcast emergency-update: id={}, status={}, event={}",
+                    emergency.getId(), emergency.getStatus(), eventName);
+        } catch (Exception e) {
+            log.warn("Failed to broadcast emergency update for {}: {}", emergency.getId(), e.getMessage());
+        }
+    }
 }

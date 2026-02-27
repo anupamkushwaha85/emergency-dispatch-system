@@ -1,5 +1,6 @@
 package com.emergency.emergency108.service;
 
+import com.emergency.emergency108.dto.DriverStatusDTO;
 import com.emergency.emergency108.dto.LocationUpdateDTO;
 import com.emergency.emergency108.entity.*;
 import com.emergency.emergency108.metrics.DomainMetrics;
@@ -142,6 +143,9 @@ public class DriverSessionService {
         log.info("✅ Driver {} started shift with ambulance {} (Session ID: {})",
                 driverId, ambulanceId, savedSession.getId());
 
+        // Broadcast online status to admin dashboard
+        broadcastDriverStatus(savedSession, driverId);
+
         return savedSession;
     }
 
@@ -182,6 +186,9 @@ public class DriverSessionService {
                     driverId,
                     shiftDuration.toHours(),
                     session.getEmergenciesHandled());
+
+            // Broadcast offline status to admin dashboard
+            broadcastDriverStatus(session, driverId);
 
         } catch (ObjectOptimisticLockingFailureException e) {
             log.warn("Optimistic lock failure ending shift for driver {}. Retrying...", driverId);
@@ -264,6 +271,9 @@ public class DriverSessionService {
         sessionRepository.save(session);
 
         log.info("Driver {} marked as ON_TRIP (Session ID: {})", driverId, session.getId());
+
+        // Broadcast ON_TRIP status to admin dashboard
+        broadcastDriverStatus(session, driverId);
     }
 
     /**
@@ -298,6 +308,9 @@ public class DriverSessionService {
 
         log.info("Driver {} marked as ONLINE (Session ID: {}, Total emergencies: {})",
                 driverId, session.getId(), session.getEmergenciesHandled());
+
+        // Broadcast back-ONLINE status to admin dashboard
+        broadcastDriverStatus(session, driverId);
     }
 
     /**
@@ -542,5 +555,38 @@ public class DriverSessionService {
     @Transactional
     public DriverSession saveSession(DriverSession session) {
         return sessionRepository.save(session);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Broadcast driver status change to /topic/driver-status so the admin
+     * dashboard updates in real-time without polling.
+     */
+    private void broadcastDriverStatus(DriverSession session, Long driverId) {
+        try {
+            String driverName = userRepository.findById(driverId)
+                    .map(u -> u.getName())
+                    .orElse("Driver #" + driverId);
+
+            String licensePlate = ambulanceRepository.findById(session.getAmbulanceId())
+                    .map(a -> a.getLicensePlate())
+                    .orElse("Amb #" + session.getAmbulanceId());
+
+            DriverStatusDTO dto = new DriverStatusDTO(
+                    driverId,
+                    driverName,
+                    session.getAmbulanceId(),
+                    licensePlate,
+                    session.getStatus(),
+                    session.getCurrentLat(),
+                    session.getCurrentLng());
+
+            messagingTemplate.convertAndSend("/topic/driver-status", dto);
+            log.debug("Broadcast driver-status: driver={}, status={}", driverId, session.getStatus());
+        } catch (Exception e) {
+            // Non-critical — don't fail the transaction if broadcast fails
+            log.warn("Failed to broadcast driver status for driver {}: {}", driverId, e.getMessage());
+        }
     }
 }

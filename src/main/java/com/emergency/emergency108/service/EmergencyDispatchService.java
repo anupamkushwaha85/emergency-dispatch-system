@@ -1,5 +1,6 @@
 package com.emergency.emergency108.service;
 
+import com.emergency.emergency108.dto.EmergencyUpdateDTO;
 import com.emergency.emergency108.entity.*;
 import com.emergency.emergency108.event.AssignmentEvent;
 import com.emergency.emergency108.event.DomainEventPublisher;
@@ -8,9 +9,11 @@ import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.DriverSessionRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
+import com.emergency.emergency108.repository.UserRepository;
 import com.emergency.emergency108.util.GeoUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,18 +32,24 @@ public class EmergencyDispatchService {
         private final EmergencyRepository emergencyRepository;
         private final EmergencyAssignmentRepository assignmentRepository;
         private final DriverSessionRepository driverSessionRepository;
+        private final UserRepository userRepository;
+        private final SimpMessagingTemplate messagingTemplate;
 
         public EmergencyDispatchService(
                         AmbulanceRepository ambulanceRepository,
                         DomainEventPublisher eventPublisher,
                         EmergencyRepository emergencyRepository,
                         EmergencyAssignmentRepository assignmentRepository,
-                        DriverSessionRepository driverSessionRepository) {
+                        DriverSessionRepository driverSessionRepository,
+                        UserRepository userRepository,
+                        SimpMessagingTemplate messagingTemplate) {
                 this.ambulanceRepository = ambulanceRepository;
                 this.eventPublisher = eventPublisher;
                 this.emergencyRepository = emergencyRepository;
                 this.assignmentRepository = assignmentRepository;
                 this.driverSessionRepository = driverSessionRepository;
+                this.userRepository = userRepository;
+                this.messagingTemplate = messagingTemplate;
         }
 
         /**
@@ -138,6 +147,30 @@ public class EmergencyDispatchService {
                                                 ambulance.getId(),
                                                 "EMERGENCY_DISPATCHED",
                                                 "Emergency dispatched to nearest verified driver"));
+
+                broadcastEmergencyUpdate(emergency, nearestSession.getDriverId(), "DISPATCHED");
         }
 
+        private void broadcastEmergencyUpdate(Emergency emergency, Long driverId, String eventName) {
+                try {
+                        String driverName = userRepository.findById(driverId)
+                                        .map(User::getName)
+                                        .orElse("Driver #" + driverId);
+
+                        EmergencyUpdateDTO dto = new EmergencyUpdateDTO(
+                                        emergency.getId(),
+                                        emergency.getType(),
+                                        emergency.getStatus().name(),
+                                        emergency.getLatitude(),
+                                        emergency.getLongitude(),
+                                        driverId,
+                                        driverName,
+                                        eventName);
+
+                        messagingTemplate.convertAndSend("/topic/emergency-updates", dto);
+                        log.debug("Broadcast emergency-update: id={}, event={}", emergency.getId(), eventName);
+                } catch (Exception e) {
+                        log.warn("Failed to broadcast emergency update for {}: {}", emergency.getId(), e.getMessage());
+                }
+        }
 }

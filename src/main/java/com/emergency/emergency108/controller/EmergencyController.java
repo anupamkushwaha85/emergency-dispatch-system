@@ -3,11 +3,13 @@ package com.emergency.emergency108.controller;
 import com.emergency.emergency108.auth.guard.AuthGuard;
 import com.emergency.emergency108.auth.security.AuthContext;
 import com.emergency.emergency108.dto.EmergencyTimelineEvent;
+import com.emergency.emergency108.dto.EmergencyUpdateDTO;
 import com.emergency.emergency108.entity.*;
 import com.emergency.emergency108.metrics.DomainMetrics;
 import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
+import com.emergency.emergency108.repository.UserRepository;
 import com.emergency.emergency108.service.*;
 import com.emergency.emergency108.system.SystemReadiness;
 import com.emergency.emergency108.util.GeoUtil;
@@ -15,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -46,6 +49,8 @@ public class EmergencyController {
     private final AiAssistanceService aiAssistanceService;
     private final HelpingHandService helpingHandService;
     private final FCMNotificationService fcmNotificationService;
+    private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public EmergencyController(EmergencyRepository emergencyRepository,
             EmergencyDispatchService emergencyDispatchService,
@@ -61,7 +66,9 @@ public class EmergencyController {
             NotificationService notificationService,
             AiAssistanceService aiAssistanceService,
             HelpingHandService helpingHandService,
-            FCMNotificationService fcmNotificationService) {
+            FCMNotificationService fcmNotificationService,
+            UserRepository userRepository,
+            SimpMessagingTemplate messagingTemplate) {
         this.emergencyDispatchService = emergencyDispatchService;
         this.authGuard = authGuard;
         this.metrics = metrics;
@@ -78,6 +85,8 @@ public class EmergencyController {
         this.aiAssistanceService = aiAssistanceService;
         this.helpingHandService = helpingHandService;
         this.fcmNotificationService = fcmNotificationService;
+        this.userRepository = userRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     /**
@@ -182,6 +191,9 @@ public class EmergencyController {
         log.info("Emergency created by user {} with 100s confirmation deadline", userId);
 
         Emergency savedEmergency = emergencyRepository.save(emergency);
+
+        // Broadcast new emergency to admin panel
+        broadcastEmergencyUpdate(savedEmergency, null, "EMERGENCY_CREATED");
 
         // Async: Notify nearby helping hands
         try {
@@ -296,6 +308,9 @@ public class EmergencyController {
             emergencyRepository.save(emergency);
 
             log.info("Driver {} marked arrival at patient for emergency {}", driverId, id);
+
+            // Broadcast arrival status
+            broadcastEmergencyUpdate(emergency, driverId, "EMERGENCY_AT_PATIENT");
 
             return ResponseEntity.ok(Map.of(
                     "message", "Arrival at patient location recorded",
@@ -527,4 +542,40 @@ public class EmergencyController {
         }
     }
 
+    private void broadcastEmergencyUpdate(Emergency emergency, Long driverId, String eventName) {
+        try {
+            Long finalDriverId = driverId;
+            String driverName = null;
+
+            // If no driverId provided, check if there's an active assignment
+            if (finalDriverId == null) {
+                Optional<EmergencyAssignment> assignment = assignmentRepository
+                        .findActiveAssignmentByEmergencyId(emergency.getId());
+                if (assignment.isPresent() && assignment.get().getDriverId() != null) {
+                    finalDriverId = assignment.get().getDriverId();
+                }
+            }
+
+            if (finalDriverId != null) {
+                driverName = userRepository.findById(finalDriverId)
+                        .map(User::getName)
+                        .orElse("Driver #" + finalDriverId);
+            }
+
+            EmergencyUpdateDTO dto = new EmergencyUpdateDTO(
+                    emergency.getId(),
+                    emergency.getType(),
+                    emergency.getStatus().name(),
+                    emergency.getLatitude(),
+                    emergency.getLongitude(),
+                    finalDriverId,
+                    driverName,
+                    eventName);
+
+            messagingTemplate.convertAndSend("/topic/emergency-updates", dto);
+            log.debug("Broadcast emergency-update: id={}, event={}", emergency.getId(), eventName);
+        } catch (Exception e) {
+            log.warn("Failed to broadcast emergency update for {}: {}", emergency.getId(), e.getMessage());
+        }
+    }
 }
