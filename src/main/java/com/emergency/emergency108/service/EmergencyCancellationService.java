@@ -12,6 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import com.emergency.emergency108.dto.EmergencyUpdateDTO;
 
 /**
  * Service for handling emergency cancellations.
@@ -28,18 +32,21 @@ public class EmergencyCancellationService {
     private final UserRepository userRepository;
     private final DriverSessionService driverSessionService;
     private final EmergencyAuthorizationService authorizationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public EmergencyCancellationService(
             EmergencyRepository emergencyRepository,
             EmergencyAssignmentRepository assignmentRepository,
             UserRepository userRepository,
             DriverSessionService driverSessionService,
-            EmergencyAuthorizationService authorizationService) {
+            EmergencyAuthorizationService authorizationService,
+            SimpMessagingTemplate messagingTemplate) {
         this.emergencyRepository = emergencyRepository;
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
         this.driverSessionService = driverSessionService;
         this.authorizationService = authorizationService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     /**
@@ -99,6 +106,7 @@ public class EmergencyCancellationService {
         emergencyRepository.saveAndFlush(emergency); // CRITICAL: Flush to DB immediately
 
         logger.info("Emergency {} status updated to CANCELLED in database", emergency.getId());
+        broadcastEmergencyUpdate(emergency, null, "EMERGENCY_CANCELLED");
 
         return new CancellationResult(
                 true,
@@ -143,6 +151,8 @@ public class EmergencyCancellationService {
         emergency.setIsSuspectCancellation(true);
         emergencyRepository.save(emergency);
 
+        broadcastEmergencyUpdate(emergency, null, "EMERGENCY_CANCELLED");
+
         // Mark user as suspect
         markUserAsSuspect(userId);
 
@@ -166,6 +176,13 @@ public class EmergencyCancellationService {
                     driverSessionService.saveSession(session);
                     logger.info("Driver {} released back to ONLINE status", driverId);
                 }
+
+                // Notify the driver frontend of the cancellation
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("assigned", false);
+                payload.put("reason", assignment.getCancellationReason() != null ? assignment.getCancellationReason()
+                        : "Mission Cancelled by User");
+                messagingTemplate.convertAndSend("/topic/driver/" + driverId + "/assignments", payload);
 
                 // Update ambulance status if needed
                 Ambulance ambulance = assignment.getAmbulance();
@@ -219,6 +236,33 @@ public class EmergencyCancellationService {
                 .isPresent() ||
                 assignmentRepository.findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ACCEPTED)
                         .isPresent();
+    }
+
+    private void broadcastEmergencyUpdate(Emergency emergency, Long driverId, String eventName) {
+        try {
+            String driverName = null;
+            if (driverId != null) {
+                driverName = userRepository.findById(driverId)
+                        .map(User::getName)
+                        .orElse("Driver #" + driverId);
+            }
+
+            EmergencyUpdateDTO dto = new EmergencyUpdateDTO(
+                    emergency.getId(),
+                    emergency.getType(),
+                    emergency.getStatus().name(),
+                    emergency.getLatitude(),
+                    emergency.getLongitude(),
+                    driverId,
+                    driverName,
+                    eventName);
+
+            messagingTemplate.convertAndSend("/topic/emergency-updates", dto);
+            logger.debug("Broadcast emergency-update for cancellation: id={}, event={}", emergency.getId(), eventName);
+        } catch (Exception e) {
+            logger.warn("Failed to broadcast emergency update for cancellation {}: {}", emergency.getId(),
+                    e.getMessage());
+        }
     }
 
     /**

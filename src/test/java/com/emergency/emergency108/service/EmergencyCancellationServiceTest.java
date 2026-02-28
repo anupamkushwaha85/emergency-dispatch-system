@@ -13,6 +13,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -27,6 +28,9 @@ class EmergencyCancellationServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
 
     private DriverSessionService driverSessionService; // Manual stub
     private EmergencyAuthorizationService authorizationService; // Manual stub
@@ -46,7 +50,8 @@ class EmergencyCancellationServiceTest {
                 assignmentRepository,
                 userRepository,
                 driverSessionService,
-                authorizationService);
+                authorizationService,
+                messagingTemplate);
     }
 
     // Stub class for DriverSessionService
