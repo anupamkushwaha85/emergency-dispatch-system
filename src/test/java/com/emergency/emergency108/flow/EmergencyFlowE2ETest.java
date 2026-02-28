@@ -95,13 +95,14 @@ class EmergencyFlowE2ETest {
                 driverUser.setActive(true);
                 driverUser = userRepository.save(driverUser);
 
-                // 3. Create Ambulance
+                // 3. Create Ambulance (assigned to driverUser)
                 ambulance = new Ambulance();
                 ambulance.setCode("E2E-AMB-01");
                 ambulance.setLicensePlate("TEST-XX");
                 ambulance.setStatus(AmbulanceStatus.AVAILABLE);
                 ambulance.setLatitude(28.6139);
                 ambulance.setLongitude(77.2090);
+                ambulance.setDriverId(driverUser.getId());
                 ambulance = ambulanceRepository.save(ambulance);
 
                 // 4. Create proper Session for Driver

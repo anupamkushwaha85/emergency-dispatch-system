@@ -103,11 +103,17 @@ public class AmbulanceController {
             // Update Ambulance details
             ambulance.setDriver(driver.getName());
             ambulance.setDriverPhone(driver.getPhone());
+            ambulance.setDriverId(driverId);
             ambulance.setUpdatedAt(LocalDateTime.now());
 
             ambulanceRepository.save(ambulance);
 
-            return ResponseEntity.ok(ambulance);
+            return ResponseEntity.ok(Map.of(
+                "message", "Driver assigned successfully",
+                "ambulanceId", ambulance.getId(),
+                "driverId", driverId,
+                "driverName", driver.getName()
+            ));
 
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());

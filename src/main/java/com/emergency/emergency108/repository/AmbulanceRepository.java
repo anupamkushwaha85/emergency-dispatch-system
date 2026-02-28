@@ -15,7 +15,10 @@ public interface AmbulanceRepository extends JpaRepository<Ambulance, Long> {
 
   java.util.Optional<Ambulance> findByCode(String code);
 
-  @Query("SELECT a FROM Ambulance a INNER JOIN DriverSession ds ON a.id = ds.ambulanceId WHERE ds.driverId = :driverId AND ds.sessionEndTime IS NULL")
+  /**
+   * Find the ambulance directly assigned to this driver by admin.
+   * Uses the driver_id column set via PUT /api/ambulances/{id}/assign.
+   */
   java.util.Optional<Ambulance> findByDriverId(Long driverId);
 
   /**

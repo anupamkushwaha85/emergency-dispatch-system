@@ -23,6 +23,13 @@ public class Ambulance {
     @Column(name = "driver_phone")
     private String driverPhone;
 
+    /**
+     * The userId of the driver assigned to this ambulance by admin.
+     * Set via PUT /api/ambulances/{id}/assign. Used by GET /api/driver/my-ambulance.
+     */
+    @Column(name = "driver_id")
+    private Long driverId;
+
     @Column(name = "license_plate", nullable = false)
     private String licensePlate;
 
@@ -107,6 +114,14 @@ public class Ambulance {
 
     public void setDriverPhone(String driverPhone) {
         this.driverPhone = driverPhone;
+    }
+
+    public Long getDriverId() {
+        return driverId;
+    }
+
+    public void setDriverId(Long driverId) {
+        this.driverId = driverId;
     }
 
     public String getLicensePlate() {
