@@ -14,6 +14,7 @@ import com.emergency.emergency108.entity.Ambulance;
 import com.emergency.emergency108.entity.AmbulanceStatus;
 import com.emergency.emergency108.entity.DriverSession;
 import com.emergency.emergency108.service.DriverSessionService;
+import com.emergency.emergency108.service.EmergencyCancellationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -36,17 +37,20 @@ public class AdminController {
     private final EmergencyRepository emergencyRepository;
     private final AmbulanceRepository ambulanceRepository;
     private final DriverSessionService driverSessionService;
+    private final EmergencyCancellationService cancellationService;
 
     public AdminController(TokenService tokenService,
             UserRepository userRepository,
             EmergencyRepository emergencyRepository,
             AmbulanceRepository ambulanceRepository,
-            DriverSessionService driverSessionService) {
+            DriverSessionService driverSessionService,
+            EmergencyCancellationService cancellationService) {
         this.tokenService = tokenService;
         this.userRepository = userRepository;
         this.emergencyRepository = emergencyRepository;
         this.ambulanceRepository = ambulanceRepository;
         this.driverSessionService = driverSessionService;
+        this.cancellationService = cancellationService;
     }
 
     /**
@@ -415,6 +419,51 @@ public class AdminController {
             logger.error("❌ Error fetching active emergencies: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Failed to fetch active emergencies");
+        }
+    }
+
+    /**
+     * Admin force-cancel an active emergency (fake emergency prevention).
+     * POST /api/admin/emergencies/{emergencyId}/cancel
+     */
+    @PostMapping("/emergencies/{emergencyId}/cancel")
+    public ResponseEntity<?> adminCancelEmergency(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long emergencyId,
+            @RequestBody Map<String, String> body) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            AuthTokenPayload payload = tokenService.validateAndParse(token);
+
+            User admin = userRepository.findById(payload.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Admin user not found"));
+
+            if (admin.getRole() != UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Admin access required");
+            }
+
+            String reason = body.getOrDefault("reason", "Cancelled by admin");
+            EmergencyCancellationService.CancellationResult result =
+                    cancellationService.adminCancelEmergency(emergencyId, payload.getUserId(), reason);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", result.isSuccess());
+            response.put("message", result.getMessage());
+            response.put("reason", reason);
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            logger.warn("Admin cancel rejected: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IllegalStateException e) {
+            logger.warn("Admin cancel invalid state: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (RuntimeException e) {
+            logger.error("❌ Error in admin cancel emergency {}: {}", emergencyId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("❌ Error in admin cancel emergency {}: {}", emergencyId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to cancel emergency");
         }
     }
 }

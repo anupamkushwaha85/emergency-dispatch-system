@@ -95,6 +95,54 @@ public class EmergencyCancellationService {
     }
 
     /**
+     * Cancel emergency as admin. Bypasses user-creator authorization.
+     * Releases any assigned driver, marks emergency cancelled, broadcasts update.
+     * No suspect penalty is applied to the user.
+     *
+     * @param emergencyId Emergency ID
+     * @param adminId     Admin user ID (for logging)
+     * @param reason      Reason for cancellation (e.g. "Fake emergency")
+     * @return Cancellation result
+     */
+    @Transactional
+    public CancellationResult adminCancelEmergency(Long emergencyId, Long adminId, String reason) {
+        Emergency emergency = emergencyRepository.findById(emergencyId)
+                .orElseThrow(() -> new IllegalArgumentException("Emergency not found: " + emergencyId));
+
+        EmergencyStatus currentStatus = emergency.getStatus();
+        if (currentStatus == EmergencyStatus.COMPLETED || currentStatus == EmergencyStatus.CANCELLED) {
+            throw new IllegalStateException("Emergency already " + currentStatus);
+        }
+
+        // Release any active driver assignment (but do NOT mark user as suspect)
+        Optional<EmergencyAssignment> activeAssignmentOpt = assignmentRepository
+                .findByEmergencyIdAndStatus(emergency.getId(), EmergencyAssignmentStatus.ASSIGNED);
+        if (activeAssignmentOpt.isEmpty()) {
+            activeAssignmentOpt = assignmentRepository
+                    .findByEmergencyIdAndStatus(emergency.getId(), EmergencyAssignmentStatus.ACCEPTED);
+        }
+        if (activeAssignmentOpt.isPresent()) {
+            EmergencyAssignment assignment = activeAssignmentOpt.get();
+            String cancelReason = reason != null && !reason.isBlank() ? reason : "Cancelled by admin";
+            assignment.setCancellationReason(cancelReason);
+            releaseDriver(assignment);
+            assignment.setStatus(EmergencyAssignmentStatus.CANCELLED);
+            assignment.setCancelledAt(LocalDateTime.now());
+            assignmentRepository.save(assignment);
+        }
+
+        emergency.setStatus(EmergencyStatus.CANCELLED);
+        emergency.setIsSuspectCancellation(false); // admin cancel — no user penalty
+        emergencyRepository.saveAndFlush(emergency);
+
+        broadcastEmergencyUpdate(emergency, null, "EMERGENCY_CANCELLED");
+        logger.info("Admin {} force-cancelled emergency {} — reason: {}", adminId, emergencyId, reason);
+
+        return new CancellationResult(true, "Emergency cancelled by admin", false,
+                reason != null ? reason : "Cancelled by admin");
+    }
+
+    /**
      * Handle early cancellation (within 100 seconds, no driver assigned).
      * No penalty for user.
      */
