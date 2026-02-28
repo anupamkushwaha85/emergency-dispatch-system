@@ -24,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
+import com.emergency.emergency108.service.FCMNotificationService;
 
 @Service
 public class EmergencyAssignmentService {
@@ -37,6 +40,7 @@ public class EmergencyAssignmentService {
     private final DriverSessionService driverSessionService;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final FCMNotificationService fcmNotificationService;
 
     private static final Logger log = LoggerFactory.getLogger(EmergencyAssignmentService.class);
 
@@ -48,7 +52,8 @@ public class EmergencyAssignmentService {
             DomainMetrics metrics,
             DriverSessionService driverSessionService,
             UserRepository userRepository,
-            SimpMessagingTemplate messagingTemplate) {
+            SimpMessagingTemplate messagingTemplate,
+            FCMNotificationService fcmNotificationService) {
         this.metrics = metrics;
         this.eventPublisher = eventPublisher;
         this.emergencyRepository = emergencyRepository;
@@ -58,6 +63,7 @@ public class EmergencyAssignmentService {
         this.driverSessionService = driverSessionService;
         this.userRepository = userRepository;
         this.messagingTemplate = messagingTemplate;
+        this.fcmNotificationService = fcmNotificationService;
     }
 
     public boolean isAlreadyAssigned(Long emergencyId) {
@@ -203,6 +209,10 @@ public class EmergencyAssignmentService {
                             ambulance.getId(),
                             "ASSIGNMENT_TIMED_OUT",
                             "Assignment timed out"));
+
+            if (assignment.getDriverId() != null) {
+                sendAssignmentCancellation(assignment.getDriverId(), emergency.getId(), "Assignment Timed Out");
+            }
 
             try {
                 // BUG FIX: Reset to CREATED so dispatch service accepts it
@@ -605,6 +615,32 @@ public class EmergencyAssignmentService {
                     emergency.getId(), emergency.getStatus(), eventName);
         } catch (Exception e) {
             log.warn("Failed to broadcast emergency update for {}: {}", emergency.getId(), e.getMessage());
+        }
+    }
+
+    private void sendAssignmentCancellation(Long driverId, Long emergencyId, String reason) {
+        try {
+            // --- 1. Real-time STOMP Push (Foreground) ---
+            Map<String, Object> assignmentPayload = new HashMap<>();
+            assignmentPayload.put("assigned", false);
+            assignmentPayload.put("reason", reason);
+            messagingTemplate.convertAndSend("/topic/driver/" + driverId + "/assignments", assignmentPayload);
+
+            // --- 2. High-Priority FCM Push (Background) ---
+            User driverUser = userRepository.findById(driverId).orElse(null);
+            if (driverUser != null && driverUser.getFcmToken() != null && !driverUser.getFcmToken().isEmpty()) {
+                Map<String, String> data = new HashMap<>();
+                data.put("action", "CANCEL_EMERGENCY");
+                data.put("emergencyId", String.valueOf(emergencyId));
+
+                fcmNotificationService.sendPushNotification(
+                        driverUser.getFcmToken(),
+                        "❌ Assignment Cancelled",
+                        reason,
+                        data);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to send assignment cancellation push to driver {}: {}", driverId, e.getMessage());
         }
     }
 }

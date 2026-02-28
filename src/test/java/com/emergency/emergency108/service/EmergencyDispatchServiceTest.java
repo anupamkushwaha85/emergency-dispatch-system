@@ -41,6 +41,7 @@ class EmergencyDispatchServiceTest {
                 com.emergency.emergency108.repository.UserRepository.class);
         org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate = mock(
                 org.springframework.messaging.simp.SimpMessagingTemplate.class);
+        FCMNotificationService fcmNotificationService = mock(FCMNotificationService.class);
 
         // Manual stub for concrete class
         eventPublisher = new DomainEventPublisherStub();
@@ -52,7 +53,8 @@ class EmergencyDispatchServiceTest {
                 assignmentRepository,
                 driverSessionRepository,
                 userRepository,
-                messagingTemplate);
+                messagingTemplate,
+                fcmNotificationService);
     }
 
     static class DomainEventPublisherStub extends DomainEventPublisher {

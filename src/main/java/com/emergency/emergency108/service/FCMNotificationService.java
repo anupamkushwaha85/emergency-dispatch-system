@@ -4,6 +4,8 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.AndroidConfig;
+import com.google.firebase.messaging.AndroidNotification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,9 +36,20 @@ public class FCMNotificationService {
                     .setBody(body)
                     .build();
 
+            AndroidNotification androidNotification = AndroidNotification.builder()
+                    .setChannelId("emergency_channel")
+                    .setSound("default")
+                    .build();
+
+            AndroidConfig androidConfig = AndroidConfig.builder()
+                    .setPriority(AndroidConfig.Priority.HIGH)
+                    .setNotification(androidNotification)
+                    .build();
+
             Message.Builder messageBuilder = Message.builder()
                     .setToken(fcmToken)
-                    .setNotification(notification);
+                    .setNotification(notification)
+                    .setAndroidConfig(androidConfig);
 
             // Add custom data if provided
             if (data != null && !data.isEmpty()) {

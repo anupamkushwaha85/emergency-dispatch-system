@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +36,7 @@ public class EmergencyDispatchService {
         private final DriverSessionRepository driverSessionRepository;
         private final UserRepository userRepository;
         private final SimpMessagingTemplate messagingTemplate;
+        private final FCMNotificationService fcmNotificationService;
 
         public EmergencyDispatchService(
                         AmbulanceRepository ambulanceRepository,
@@ -42,7 +45,8 @@ public class EmergencyDispatchService {
                         EmergencyAssignmentRepository assignmentRepository,
                         DriverSessionRepository driverSessionRepository,
                         UserRepository userRepository,
-                        SimpMessagingTemplate messagingTemplate) {
+                        SimpMessagingTemplate messagingTemplate,
+                        FCMNotificationService fcmNotificationService) {
                 this.ambulanceRepository = ambulanceRepository;
                 this.eventPublisher = eventPublisher;
                 this.emergencyRepository = emergencyRepository;
@@ -50,6 +54,7 @@ public class EmergencyDispatchService {
                 this.driverSessionRepository = driverSessionRepository;
                 this.userRepository = userRepository;
                 this.messagingTemplate = messagingTemplate;
+                this.fcmNotificationService = fcmNotificationService;
         }
 
         /**
@@ -149,6 +154,34 @@ public class EmergencyDispatchService {
                                                 "Emergency dispatched to nearest verified driver"));
 
                 broadcastEmergencyUpdate(emergency, nearestSession.getDriverId(), "DISPATCHED");
+
+                // --- 1. Real-time STOMP Push (Foreground) ---
+                Map<String, Object> assignmentPayload = new HashMap<>();
+                assignmentPayload.put("assigned", true);
+
+                Map<String, Object> emergencyMap = new HashMap<>();
+                emergencyMap.put("id", emergency.getId());
+                emergencyMap.put("type", emergency.getType());
+                emergencyMap.put("latitude", emergency.getLatitude());
+                emergencyMap.put("longitude", emergency.getLongitude());
+                assignmentPayload.put("emergency", emergencyMap);
+
+                messagingTemplate.convertAndSend("/topic/driver/" + nearestSession.getDriverId() + "/assignments",
+                                assignmentPayload);
+
+                // --- 2. High-Priority FCM Push (Background w/ Buzzer) ---
+                User driverUser = userRepository.findById(nearestSession.getDriverId()).orElse(null);
+                if (driverUser != null && driverUser.getFcmToken() != null && !driverUser.getFcmToken().isEmpty()) {
+                        Map<String, String> data = new HashMap<>();
+                        data.put("action", "NEW_EMERGENCY");
+                        data.put("emergencyId", String.valueOf(emergency.getId()));
+
+                        fcmNotificationService.sendPushNotification(
+                                        driverUser.getFcmToken(),
+                                        "🚨 New Emergency Assignment",
+                                        "Tap to view patient details and accept/reject.",
+                                        data);
+                }
         }
 
         private void broadcastEmergencyUpdate(Emergency emergency, Long driverId, String eventName) {
