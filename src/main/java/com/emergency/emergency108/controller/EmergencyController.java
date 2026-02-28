@@ -524,6 +524,14 @@ public class EmergencyController {
             trackingData.put("driverStatus", session.getStatus().toString());
             trackingData.put("message", "Ambulance en route");
 
+            // Include hospital destination so user-side map routes correctly during TO_HOSPITAL phase
+            if (assignment.getDestinationHospital() != null) {
+                Hospital hospital = assignment.getDestinationHospital();
+                trackingData.put("hospitalLat", hospital.getLatitude());
+                trackingData.put("hospitalLng", hospital.getLongitude());
+                trackingData.put("hospitalName", hospital.getName());
+            }
+
             log.debug("Tracking emergency {}: Distance {}km, ETA {}min, GPS age: {} seconds",
                     id, distanceKm, etaMinutes,
                     session.getLastHeartbeat() != null

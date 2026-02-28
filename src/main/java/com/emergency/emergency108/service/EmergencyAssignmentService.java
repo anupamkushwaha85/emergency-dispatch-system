@@ -497,7 +497,7 @@ public class EmergencyAssignmentService {
                         "ASSIGNMENT_ACCEPTED",
                         "Driver accepted emergency"));
 
-        metrics.assignmentCompleted();
+        metrics.assignmentAccepted();
         broadcastEmergencyUpdate(emergency, "ASSIGNMENT_ACCEPTED");
 
         return assignment;

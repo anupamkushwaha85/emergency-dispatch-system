@@ -254,6 +254,14 @@ public class DriverController {
                             HttpStatus.NOT_FOUND,
                             "Assignment not found"));
 
+            // 2b. Verify the calling driver is the one who accepted this assignment
+            Long driverId = AuthContext.getUserId();
+            if (assignment.getDriverId() != null && !assignment.getDriverId().equals(driverId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "You are not the assigned driver for this emergency");
+            }
+
             // 3. Find nearest hospital
             List<Hospital> nearestHospitals = hospitalRepository.findNearestHospitals(
                     patientLat,
@@ -326,6 +334,14 @@ public class DriverController {
                             HttpStatus.NOT_FOUND,
                             "Assignment not found"));
 
+            // 2b. Verify the calling driver owns this assignment
+            Long driverId = AuthContext.getUserId();
+            if (assignment.getDriverId() != null && !assignment.getDriverId().equals(driverId)) {
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "You are not the assigned driver for this emergency");
+            }
+
             Hospital hospital = assignment.getDestinationHospital();
             if (hospital == null) {
                 throw new ResponseStatusException(
@@ -351,8 +367,6 @@ public class DriverController {
             }
 
             // 4. Complete the Emergency and Assignment Lifecycle
-            Long driverId = AuthContext.getUserId();
-
             // Mark assignment COMPLETED (was missing — caused driver to stay ON_TRIP permanently)
             assignment.setStatus(EmergencyAssignmentStatus.COMPLETED);
             assignment.setCompletedAt(LocalDateTime.now());
