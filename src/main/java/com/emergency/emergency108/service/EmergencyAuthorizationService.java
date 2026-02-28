@@ -87,11 +87,23 @@ public class EmergencyAuthorizationService {
      */
     @Transactional(readOnly = true)
     public boolean isDriverAssignedToEmergency(Long driverId, Long emergencyId) {
-        return assignmentRepository.findByEmergencyIdAndDriverIdAndStatus(
-                emergencyId, driverId, EmergencyAssignmentStatus.ASSIGNED
-        ).isPresent() || assignmentRepository.findByEmergencyIdAndDriverIdAndStatus(
-                emergencyId, driverId, EmergencyAssignmentStatus.ACCEPTED
-        ).isPresent();
+        // ACCEPTED: driverId is already written on the assignment.
+        if (assignmentRepository.findByEmergencyIdAndDriverIdAndStatus(
+                emergencyId, driverId, EmergencyAssignmentStatus.ACCEPTED).isPresent()) {
+            return true;
+        }
+
+        // ASSIGNED: driverId is still NULL on the row (set only after accept).
+        // Verify via the ambulance the driver is currently operating.
+        Optional<EmergencyAssignment> assigned = assignmentRepository
+                .findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ASSIGNED);
+        if (assigned.isPresent()) {
+            com.emergency.emergency108.entity.Ambulance ambulance = assigned.get().getAmbulance();
+            if (ambulance != null) {
+                return driverSessionService.isDriverOperatingAmbulance(driverId, ambulance.getId());
+            }
+        }
+        return false;
     }
 
     /**

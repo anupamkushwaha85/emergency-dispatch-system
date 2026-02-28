@@ -24,7 +24,7 @@ public interface EmergencyAssignmentRepository
 
         List<EmergencyAssignment> findByStatus(EmergencyAssignmentStatus status);
 
-        @Query("SELECT a FROM EmergencyAssignment a WHERE a.emergency.id = :emergencyId AND a.status IN ('ASSIGNED', 'ACCEPTED')")
+        @Query("SELECT a FROM EmergencyAssignment a JOIN FETCH a.ambulance WHERE a.emergency.id = :emergencyId AND a.status IN ('ASSIGNED', 'ACCEPTED')")
         Optional<EmergencyAssignment> findActiveAssignmentByEmergencyId(@Param("emergencyId") Long emergencyId);
 
         Optional<EmergencyAssignment> findByEmergencyIdAndStatus(

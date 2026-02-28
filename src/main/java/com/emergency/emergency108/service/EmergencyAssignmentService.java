@@ -435,11 +435,19 @@ public class EmergencyAssignmentService {
      */
     @Transactional
     public EmergencyAssignment acceptEmergency(Long emergencyId, Long driverId) {
-        // Find active assignment for this emergency and driver
+        // driverId on the assignment row is NULL until the driver accepts/rejects —
+        // so we cannot filter by driverId here. Find by emergencyId + ASSIGNED status
+        // and verify the driver is operating the assigned ambulance.
         EmergencyAssignment assignment = assignmentRepository
-                .findByEmergencyIdAndDriverIdAndStatus(emergencyId, driverId, EmergencyAssignmentStatus.ASSIGNED)
-                .orElseThrow(
-                        () -> new IllegalStateException("No active assignment found for this emergency and driver"));
+                .findActiveAssignmentForUpdate(emergencyId)
+                .orElseThrow(() -> new IllegalStateException("No active assignment found for this emergency"));
+
+        Ambulance assignedAmbulance = assignment.getAmbulance();
+        if (assignedAmbulance == null ||
+                !driverSessionService.isDriverOperatingAmbulance(driverId, assignedAmbulance.getId())) {
+            throw new IllegalStateException(
+                    "You are not authorized to accept this emergency: ambulance not assigned to you");
+        }
 
         Emergency emergency = assignment.getEmergency();
 
@@ -459,6 +467,7 @@ public class EmergencyAssignmentService {
         // Update assignment status
         assignment.setStatus(EmergencyAssignmentStatus.ACCEPTED);
         assignment.setAcceptedAt(now);
+        assignment.setDriverId(driverId); // record which driver accepted
         assignmentRepository.save(assignment);
 
         // Update emergency status
@@ -503,11 +512,18 @@ public class EmergencyAssignmentService {
      */
     @Transactional
     public void rejectEmergency(Long emergencyId, Long driverId) {
-        // Find active assignment for this emergency and driver
+        // driverId on the assignment is NULL at ASSIGNED stage — find by emergencyId only
+        // and verify driver is operating the assigned ambulance.
         EmergencyAssignment assignment = assignmentRepository
-                .findByEmergencyIdAndDriverIdAndStatus(emergencyId, driverId, EmergencyAssignmentStatus.ASSIGNED)
-                .orElseThrow(
-                        () -> new IllegalStateException("No active assignment found for this emergency and driver"));
+                .findActiveAssignmentForUpdate(emergencyId)
+                .orElseThrow(() -> new IllegalStateException("No active assignment found for this emergency"));
+
+        Ambulance assignedAmbulance = assignment.getAmbulance();
+        if (assignedAmbulance == null ||
+                !driverSessionService.isDriverOperatingAmbulance(driverId, assignedAmbulance.getId())) {
+            throw new IllegalStateException(
+                    "You are not authorized to reject this emergency: ambulance not assigned to you");
+        }
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -520,6 +536,7 @@ public class EmergencyAssignmentService {
         // Update assignment status
         assignment.setStatus(EmergencyAssignmentStatus.REJECTED);
         assignment.setRejectedAt(now);
+        assignment.setDriverId(driverId); // record which driver rejected
         assignment.setCancellationReason("Driver manually rejected");
         assignmentRepository.save(assignment);
 
