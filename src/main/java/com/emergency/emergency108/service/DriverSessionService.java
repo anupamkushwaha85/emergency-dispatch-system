@@ -404,6 +404,30 @@ public class DriverSessionService {
     }
 
     /**
+     * Mark a driver OFFLINE because their STOMP WebSocket disconnected.
+     *
+     * Unlike {@link #endShift} this does NOT throw if the driver is ON_TRIP —
+     * a network drop during a trip is a real scenario and we must still clean up
+     * the session so dispatch does not see a phantom ONLINE driver.
+     *
+     * Called exclusively by {@link com.emergency.emergency108.config.WebSocketEventListener}.
+     */
+    @Transactional
+    public void markDriverOfflineFromDisconnect(Long driverId) {
+        Optional<DriverSession> sessionOpt = sessionRepository.findActiveSessionByDriverId(driverId);
+        if (sessionOpt.isEmpty()) {
+            // Already offline — idempotent
+            return;
+        }
+        DriverSession session = sessionOpt.get();
+        session.setStatus(DriverSessionStatus.OFFLINE);
+        session.setSessionEndTime(LocalDateTime.now());
+        sessionRepository.save(session);
+        log.info("🔴 Driver {} session {} force-closed via STOMP disconnect", driverId, session.getId());
+        broadcastDriverStatus(session, driverId);
+    }
+
+    /**
      * Verify that driver owns the session for the given ambulance.
      * Used for authorization checks.
      */

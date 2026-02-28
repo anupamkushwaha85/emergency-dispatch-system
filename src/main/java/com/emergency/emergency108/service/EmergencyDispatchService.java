@@ -71,14 +71,12 @@ public class EmergencyDispatchService {
                 Emergency emergency = emergencyRepository.findById(emergencyId)
                                 .orElseThrow(() -> new IllegalArgumentException("Emergency not found: " + emergencyId));
 
-                // Filter for VERIFIED drivers with fresh heartbeat (< 1 hour for testing)
-                // We use a 1-hour window explicitly
-                LocalDateTime oneHourAgo = LocalDateTime.now().minusSeconds(3600);
-
-                // Fetch only eligible drivers natively from the database to avoid O(N) memory
-                // scaling loophole
-                List<DriverSession> onlineSessions = driverSessionRepository.findEligibleOnlineDrivers(oneHourAgo);
-                log.info("Found {} eligible online sessions from database query", onlineSessions.size());
+                // Driver liveness is now guaranteed by STOMP socket tracking:
+                // - When a driver's WebSocket disconnects their session is immediately set OFFLINE
+                //   by WebSocketEventListener (no heartbeat window required).
+                // - So any session with status=ONLINE here is genuinely connected right now.
+                List<DriverSession> onlineSessions = driverSessionRepository.findAllOnlineDrivers();
+                log.info("Found {} ONLINE+VERIFIED sessions for dispatch", onlineSessions.size());
 
                 // Exclude drivers who have already rejected this emergency
                 List<Long> rejectedDriverIds = assignmentRepository.findRejectedDriverIdsByEmergencyId(emergencyId);
