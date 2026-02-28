@@ -81,7 +81,21 @@ public class DriverSessionService {
             throw new IllegalStateException("Driver account is blocked");
         }
 
-        // 2️⃣ INVARIANT CHECK: Driver cannot start shift if already active
+        // 2️⃣ Clean up orphan OFFLINE sessions (disconnect-orphans with no sessionEndTime)
+        //    These are created by markDriverOfflineFromDisconnect which does NOT set sessionEndTime.
+        //    If uncleaned, reactivateIfDisconnected would reactivate the old one AFTER the new
+        //    session is created → 2 ONLINE sessions → NonUniqueResultException crashes.
+        List<DriverSession> orphans = sessionRepository.findOrphanDisconnectedSessions(driverId);
+        if (!orphans.isEmpty()) {
+            log.info("Cleaning {} orphan disconnected sessions for driver {} before new shift",
+                    orphans.size(), driverId);
+            for (DriverSession orphan : orphans) {
+                orphan.setSessionEndTime(LocalDateTime.now());
+                sessionRepository.save(orphan);
+            }
+        }
+
+        // 3️⃣ INVARIANT CHECK: Driver cannot start shift if already ONLINE or ON_TRIP
         Optional<DriverSession> existingDriverSession = sessionRepository.findActiveSessionByDriverId(driverId);
 
         if (existingDriverSession.isPresent()) {
@@ -399,7 +413,10 @@ public class DriverSessionService {
     @Transactional(readOnly = true)
     public boolean isDriverOnline(Long driverId) {
         return sessionRepository.findActiveSessionByDriverId(driverId)
-                .map(DriverSession::isAvailable)
+                // Driver is considered "online" for Flutter if ONLINE or ON_TRIP
+                // (ON_TRIP = actively handling a mission — still needs tracking/location)
+                .map(s -> s.getStatus() == DriverSessionStatus.ONLINE
+                        || s.getStatus() == DriverSessionStatus.ON_TRIP)
                 .orElse(false);
     }
 
@@ -421,9 +438,47 @@ public class DriverSessionService {
         }
         DriverSession session = sessionOpt.get();
         session.setStatus(DriverSessionStatus.OFFLINE);
-        session.setSessionEndTime(LocalDateTime.now());
+        // NOTE: Do NOT set sessionEndTime here.
+        // sessionEndTime=null means "disconnected by network drop, eligible for reactivation on reconnect".
+        // sessionEndTime!=null means "explicitly ended shift" (set only by endShift or stale cleanup).
         sessionRepository.save(session);
-        log.info("🔴 Driver {} session {} force-closed via STOMP disconnect", driverId, session.getId());
+        log.info("🔴 Driver {} session {} marked OFFLINE via STOMP disconnect (eligible for reconnect reactivation)", driverId, session.getId());
+        broadcastDriverStatus(session, driverId);
+    }
+
+    /**
+     * Reactivate a driver's session when their STOMP WebSocket reconnects.
+     *
+     * Looks for a recent OFFLINE session with null sessionEndTime (caused by a
+     * network-drop disconnect). If found within the reactivation window, restores
+     * status to ONLINE so dispatch can find the driver without requiring a manual
+     * "start shift" flow from the Flutter app.
+     */
+    @Transactional
+    public void reactivateIfDisconnected(Long driverId) {
+        // Skip reactivation if there's already an active session (ONLINE or ON_TRIP).
+        // This happens when startShift was called before STOMP reconnect — the fresh
+        // session is already authoritative; reactivating the old orphan would create
+        // a duplicate that causes NonUniqueResultException throughout the app.
+        Optional<DriverSession> activeSession = sessionRepository.findActiveSessionByDriverId(driverId);
+        if (activeSession.isPresent()) {
+            log.debug("Driver {} already has an active session (status={}), skipping reactivation",
+                    driverId, activeSession.get().getStatus());
+            return;
+        }
+
+        LocalDateTime reactivationWindow = LocalDateTime.now().minusMinutes(10);
+        Optional<DriverSession> sessionOpt =
+                sessionRepository.findRecentlyDisconnectedSession(driverId, reactivationWindow);
+        if (sessionOpt.isEmpty()) {
+            // No recent disconnected session — new STOMP connection, ignore
+            return;
+        }
+        DriverSession session = sessionOpt.get();
+        session.setStatus(DriverSessionStatus.ONLINE);
+        session.setLastHeartbeat(LocalDateTime.now());
+        sessionRepository.save(session);
+        log.info("🟢 Driver {} session {} reactivated after STOMP reconnect", driverId, session.getId());
         broadcastDriverStatus(session, driverId);
     }
 

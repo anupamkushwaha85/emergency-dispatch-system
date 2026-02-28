@@ -43,6 +43,30 @@ public interface DriverSessionRepository extends JpaRepository<DriverSession, Lo
        List<DriverSession> findAllOnlineDrivers();
 
        /**
+        * Find a recently disconnected session for a driver that is eligible for reconnect reactivation.
+        * Criteria: status=OFFLINE, sessionEndTime IS NULL (disconnected by network, not explicit endShift),
+        * and session started after cutoffTime (within the reactivation window).
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "AND ds.status = 'OFFLINE' " +
+                     "AND ds.sessionEndTime IS NULL " +
+                     "AND ds.sessionStartTime > :cutoffTime " +
+                     "ORDER BY ds.sessionStartTime DESC")
+       Optional<DriverSession> findRecentlyDisconnectedSession(
+                     @Param("driverId") Long driverId,
+                     @Param("cutoffTime") LocalDateTime cutoffTime);
+
+       /**
+        * Find ALL orphan OFFLINE sessions for a driver that were left by STOMP disconnect
+        * (sessionEndTime IS NULL = disconnected by network, not explicit endShift).
+        * Used by startShift to clean them up before creating a new session.
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "AND ds.status = 'OFFLINE' " +
+                     "AND ds.sessionEndTime IS NULL")
+       List<DriverSession> findOrphanDisconnectedSessions(@Param("driverId") Long driverId);
+
+       /**
         * Find eligible ONLINE drivers with recent heartbeat or recent session start
         * Must be VERIFIED, have ONLINE session, and be active within the cutoff time.
         */

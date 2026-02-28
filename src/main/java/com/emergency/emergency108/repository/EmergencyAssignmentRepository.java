@@ -27,9 +27,16 @@ public interface EmergencyAssignmentRepository
         @Query("SELECT a FROM EmergencyAssignment a JOIN FETCH a.ambulance WHERE a.emergency.id = :emergencyId AND a.status IN ('ASSIGNED', 'ACCEPTED')")
         Optional<EmergencyAssignment> findActiveAssignmentByEmergencyId(@Param("emergencyId") Long emergencyId);
 
+        /**
+         * Find assignment by emergency ID and status.
+         * Explicit @Query to avoid Spring Data derived-query ambiguity:
+         * 'emergency' is a @ManyToOne so 'emergencyId' MUST be written as
+         * 'a.emergency.id' — not relying on Spring Data's camelCase parser.
+         */
+        @Query("SELECT a FROM EmergencyAssignment a WHERE a.emergency.id = :emergencyId AND a.status = :status")
         Optional<EmergencyAssignment> findByEmergencyIdAndStatus(
-                        Long emergencyId,
-                        EmergencyAssignmentStatus status);
+                        @Param("emergencyId") Long emergencyId,
+                        @Param("status") EmergencyAssignmentStatus status);
 
         List<EmergencyAssignment> findByEmergencyId(Long emergencyId);
 

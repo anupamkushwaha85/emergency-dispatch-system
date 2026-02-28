@@ -5,9 +5,11 @@ import com.emergency.emergency108.auth.security.AuthContext;
 import com.emergency.emergency108.dto.LocationUpdateRequest;
 import com.emergency.emergency108.dto.StartShiftRequest;
 import com.emergency.emergency108.entity.Ambulance;
+import com.emergency.emergency108.entity.AmbulanceStatus;
 import com.emergency.emergency108.entity.DriverSession;
 import com.emergency.emergency108.entity.Emergency;
 import com.emergency.emergency108.entity.EmergencyAssignment;
+import com.emergency.emergency108.entity.EmergencyAssignmentStatus;
 import com.emergency.emergency108.entity.EmergencyStatus;
 import com.emergency.emergency108.entity.Hospital;
 import com.emergency.emergency108.repository.AmbulanceRepository;
@@ -349,14 +351,39 @@ public class DriverController {
             }
 
             // 4. Complete the Emergency and Assignment Lifecycle
+            Long driverId = AuthContext.getUserId();
+
+            // Mark assignment COMPLETED (was missing — caused driver to stay ON_TRIP permanently)
+            assignment.setStatus(EmergencyAssignmentStatus.COMPLETED);
             assignment.setCompletedAt(LocalDateTime.now());
             assignmentRepository.save(assignment);
 
             emergency.setStatus(EmergencyStatus.COMPLETED);
             emergencyRepository.save(emergency);
 
+            // Release driver back to ONLINE so they can receive the next dispatch
+            try {
+                sessionService.markDriverOnline(driverId);
+                log.info("Driver {} released to ONLINE after completing emergency {}", driverId, emergencyId);
+            } catch (Exception e) {
+                log.warn("Could not mark driver {} ONLINE after completion: {}", driverId, e.getMessage());
+            }
+
+            // Release ambulance back to AVAILABLE
+            try {
+                Ambulance ambulance = assignment.getAmbulance();
+                if (ambulance != null) {
+                    ambulance.setStatus(AmbulanceStatus.AVAILABLE);
+                    ambulanceRepository.save(ambulance);
+                    log.info("Ambulance {} released to AVAILABLE after completing emergency {}",
+                            ambulance.getId(), emergencyId);
+                }
+            } catch (Exception e) {
+                log.warn("Could not release ambulance after completion: {}", e.getMessage());
+            }
+
             log.info("Driver {}: Completed mission for emergency {} at hospital {}.",
-                    AuthContext.getUserId(), emergencyId, hospital.getName());
+                    driverId, emergencyId, hospital.getName());
 
             return ResponseEntity.ok(Map.of(
                     "message", "Mission completed successfully. Emergency closed.",
@@ -395,11 +422,20 @@ public class DriverController {
 
         Long driverId = AuthContext.get().getUserId();
 
+        // Resolve the actual session state so Flutter can decide whether to
+        // restore an active mission or prompt the driver to go online.
+        java.util.Optional<DriverSession> sessionOpt = sessionService.getCurrentSession(driverId);
         boolean isOnline = sessionService.isDriverOnline(driverId);
+        String sessionStatus = sessionOpt.map(s -> s.getStatus().name()).orElse("NONE");
+        boolean hasOngoingMission = sessionOpt
+                .map(s -> s.getStatus() == com.emergency.emergency108.entity.DriverSessionStatus.ON_TRIP)
+                .orElse(false);
 
         return ResponseEntity.ok(Map.of(
                 "driverId", driverId,
-                "isOnline", isOnline));
+                "isOnline", isOnline,
+                "sessionStatus", sessionStatus,
+                "hasOngoingMission", hasOngoingMission));
     }
     /**
      * Get the ambulance assigned to this driver.

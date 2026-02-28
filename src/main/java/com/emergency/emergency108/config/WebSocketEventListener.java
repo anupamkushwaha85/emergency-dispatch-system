@@ -50,6 +50,10 @@ public class WebSocketEventListener {
             Long driverId = Long.parseLong(driverIdHeaders.get(0).trim());
             registry.register(sessionId, driverId);
             log.info("🟢 Driver {} connected via STOMP (session={})", driverId, sessionId);
+
+            // If the driver had a session that was set OFFLINE by a previous STOMP disconnect
+            // (network drop, app background, etc.) reactivate it so dispatch can find them.
+            sessionService.reactivateIfDisconnected(driverId);
         } catch (NumberFormatException e) {
             log.warn("Invalid driverId in STOMP CONNECT headers: '{}'", driverIdHeaders.get(0));
         }
