@@ -44,12 +44,15 @@ public interface EmergencyAssignmentRepository
 
         /**
          * Find assignment by emergency ID, driver ID, and status.
-         * Used for authorization checks.
+         * Explicit @Query to avoid Spring Data derived-query ambiguity:
+         * 'emergency' is a @ManyToOne so 'emergencyId' MUST be written as
+         * 'a.emergency.id' — not relying on Spring Data's camelCase parser.
          */
+        @Query("SELECT a FROM EmergencyAssignment a WHERE a.emergency.id = :emergencyId AND a.driverId = :driverId AND a.status = :status")
         Optional<EmergencyAssignment> findByEmergencyIdAndDriverIdAndStatus(
-                        Long emergencyId,
-                        Long driverId,
-                        EmergencyAssignmentStatus status);
+                        @Param("emergencyId") Long emergencyId,
+                        @Param("driverId") Long driverId,
+                        @Param("status") EmergencyAssignmentStatus status);
 
         /**
          * Find assignment by driver ID and status only.
