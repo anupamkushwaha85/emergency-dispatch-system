@@ -7,6 +7,7 @@ import com.emergency.emergency108.entity.Emergency;
 import com.emergency.emergency108.entity.EmergencyAssignment;
 import com.emergency.emergency108.entity.EmergencyStatus;
 import com.emergency.emergency108.entity.Hospital;
+import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.HospitalRepository;
@@ -57,6 +58,8 @@ class DriverControllerTest {
     private EmergencyAssignmentRepository assignmentRepository;
     @MockBean
     private EmergencyRepository emergencyRepository;
+    @MockBean
+    private AmbulanceRepository ambulanceRepository;
     @MockBean
     private TokenService tokenService;
     @MockBean

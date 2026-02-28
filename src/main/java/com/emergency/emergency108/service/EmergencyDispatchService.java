@@ -162,9 +162,13 @@ public class EmergencyDispatchService {
                 Map<String, Object> emergencyMap = new HashMap<>();
                 emergencyMap.put("id", emergency.getId());
                 emergencyMap.put("type", emergency.getType());
+                emergencyMap.put("severity", emergency.getSeverity());
                 emergencyMap.put("latitude", emergency.getLatitude());
                 emergencyMap.put("longitude", emergency.getLongitude());
+                emergencyMap.put("userId", emergency.getUserId());
+                emergencyMap.put("status", emergency.getStatus().name());
                 assignmentPayload.put("emergency", emergencyMap);
+                assignmentPayload.put("status", "ASSIGNED");
 
                 messagingTemplate.convertAndSend("/topic/driver/" + nearestSession.getDriverId() + "/assignments",
                                 assignmentPayload);

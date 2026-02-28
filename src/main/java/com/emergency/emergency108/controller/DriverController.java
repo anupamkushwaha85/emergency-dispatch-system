@@ -4,17 +4,18 @@ import com.emergency.emergency108.auth.guard.AuthGuard;
 import com.emergency.emergency108.auth.security.AuthContext;
 import com.emergency.emergency108.dto.LocationUpdateRequest;
 import com.emergency.emergency108.dto.StartShiftRequest;
+import com.emergency.emergency108.entity.Ambulance;
 import com.emergency.emergency108.entity.DriverSession;
 import com.emergency.emergency108.entity.Emergency;
 import com.emergency.emergency108.entity.EmergencyAssignment;
 import com.emergency.emergency108.entity.EmergencyStatus;
 import com.emergency.emergency108.entity.Hospital;
+import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.HospitalRepository;
 import com.emergency.emergency108.service.DriverSessionService;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,18 +42,21 @@ public class DriverController {
     private final HospitalRepository hospitalRepository;
     private final EmergencyAssignmentRepository assignmentRepository;
     private final EmergencyRepository emergencyRepository;
+    private final AmbulanceRepository ambulanceRepository;
 
     public DriverController(
             DriverSessionService sessionService,
             AuthGuard authGuard,
             HospitalRepository hospitalRepository,
             EmergencyAssignmentRepository assignmentRepository,
-            EmergencyRepository emergencyRepository) {
+            EmergencyRepository emergencyRepository,
+            AmbulanceRepository ambulanceRepository) {
         this.sessionService = sessionService;
         this.authGuard = authGuard;
         this.hospitalRepository = hospitalRepository;
         this.assignmentRepository = assignmentRepository;
         this.emergencyRepository = emergencyRepository;
+        this.ambulanceRepository = ambulanceRepository;
     }
 
     /**
@@ -396,5 +400,29 @@ public class DriverController {
         return ResponseEntity.ok(Map.of(
                 "driverId", driverId,
                 "isOnline", isOnline));
+    }
+    /**
+     * Get the ambulance assigned to this driver.
+     * Flutter uses this to auto-detect ambulanceId before calling start-shift.
+     * 
+     * GET /api/driver/my-ambulance
+     */
+    @GetMapping("/my-ambulance")
+    public ResponseEntity<?> getMyAmbulance() {
+        authGuard.requireVerifiedDriver();
+
+        Long driverId = AuthContext.getUserId();
+
+        return ambulanceRepository.findByDriverId(driverId)
+                .map(ambulance -> ResponseEntity.ok(Map.of(
+                        "ambulanceId", ambulance.getId(),
+                        "code", ambulance.getCode() != null ? ambulance.getCode() : "",
+                        "type", ambulance.getAmbulanceType() != null ? ambulance.getAmbulanceType().toString() : "GOVERNMENT",
+                        "status", ambulance.getStatus() != null ? ambulance.getStatus().toString() : "AVAILABLE"
+                )))
+                .orElse(ResponseEntity.status(404).body(Map.of(
+                        "error", "No Ambulance Assigned",
+                        "message", "No ambulance is assigned to your account. Contact admin."
+                )));
     }
 }
