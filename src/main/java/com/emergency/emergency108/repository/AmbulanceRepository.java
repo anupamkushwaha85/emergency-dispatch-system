@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -16,10 +17,19 @@ public interface AmbulanceRepository extends JpaRepository<Ambulance, Long> {
   java.util.Optional<Ambulance> findByCode(String code);
 
   /**
-   * Find the ambulance directly assigned to this driver by admin.
-   * Uses the driver_id column set via PUT /api/ambulances/{id}/assign.
+   * Find the ambulance assigned to this driver.
+   *
+   * Checks two sources in priority order (OR):
+   * 1. driver_id column — set by admin via PUT /api/ambulances/{id}/assign
+   * 2. Active DriverSession JOIN — fallback for ambulances assigned before
+   *    the driver_id column was introduced (backward-compatible migration path)
+   *
+   * This ensures both pre-migration and post-migration ambulances are found.
    */
-  java.util.Optional<Ambulance> findByDriverId(Long driverId);
+  @Query("SELECT a FROM Ambulance a WHERE a.driverId = :driverId " +
+         "OR EXISTS (SELECT ds FROM DriverSession ds WHERE ds.ambulanceId = a.id " +
+         "AND ds.driverId = :driverId AND ds.sessionEndTime IS NULL)")
+  java.util.Optional<Ambulance> findByDriverId(@Param("driverId") Long driverId);
 
   /**
    * Find ambulances available for dispatch.
