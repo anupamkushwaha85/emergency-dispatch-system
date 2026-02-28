@@ -104,7 +104,7 @@ public class EmergencyDispatchService {
                 if (eligibleSessions.isEmpty()) {
                         log.error("No available drivers found. Checked {} online sessions against 1-hour heartbeat window.",
                                         onlineSessions.size());
-                        throw new NoAmbulancesAvailableException("No drivers available (Active within last 1 hour)");
+                        throw new NoAmbulancesAvailableException("No drivers available — no ONLINE verified drivers found");
                 }
 
                 // Find nearest driver
