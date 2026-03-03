@@ -261,9 +261,9 @@ public class EmergencyAssignmentService {
                     "Assignment is no longer active");
         }
 
-        // 🔐 VALIDATE: Driver must be operating this ambulance
+        // 🔐 VALIDATE: Driver must be operating this ambulance (heartbeat-tolerant)
         Ambulance ambulance = assignment.getAmbulance();
-        if (!driverSessionService.isDriverOperatingAmbulance(driverId, ambulance.getId())) {
+        if (!driverSessionService.isDriverOperatingAmbulanceHeartbeatTolerant(driverId, ambulance.getId())) {
             throw new InvalidAssignmentStateException(
                     String.format(
                             "You are not authorized to respond to this assignment. " +
@@ -444,7 +444,7 @@ public class EmergencyAssignmentService {
 
         Ambulance assignedAmbulance = assignment.getAmbulance();
         if (assignedAmbulance == null ||
-                !driverSessionService.isDriverOperatingAmbulance(driverId, assignedAmbulance.getId())) {
+                !driverSessionService.isDriverOperatingAmbulanceHeartbeatTolerant(driverId, assignedAmbulance.getId())) {
             throw new IllegalStateException(
                     "You are not authorized to accept this emergency: ambulance not assigned to you");
         }
@@ -521,7 +521,7 @@ public class EmergencyAssignmentService {
 
         Ambulance assignedAmbulance = assignment.getAmbulance();
         if (assignedAmbulance == null ||
-                !driverSessionService.isDriverOperatingAmbulance(driverId, assignedAmbulance.getId())) {
+                !driverSessionService.isDriverOperatingAmbulanceHeartbeatTolerant(driverId, assignedAmbulance.getId())) {
             throw new IllegalStateException(
                     "You are not authorized to reject this emergency: ambulance not assigned to you");
         }

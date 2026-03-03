@@ -37,7 +37,7 @@ public class EmergencyAuthorizationService {
      * @param driverId Driver's user ID
      * @return true if driver can accept, false otherwise
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean canDriverAcceptEmergency(Long driverId) {
         Optional<User> userOpt = userRepository.findById(driverId);
         if (userOpt.isEmpty()) {
@@ -61,8 +61,11 @@ public class EmergencyAuthorizationService {
             return false;
         }
 
-        // Must be currently ONLINE (not ON_TRIP)
-        DriverSession session = driverSessionService.getActiveSession(driverId);
+        // Must be currently ONLINE (not ON_TRIP).
+        // Heartbeat-tolerant: if STOMP was killed by Cloudflare but REST heartbeat is
+        // still active (< 2 min), auto-reactivate the session to ONLINE so a driver
+        // that received a push notification and tapped Accept is not falsely rejected.
+        DriverSession session = driverSessionService.getOrReactivateSession(driverId);
         if (session == null || session.getStatus() != DriverSessionStatus.ONLINE) {
             return false;
         }
@@ -85,7 +88,7 @@ public class EmergencyAuthorizationService {
      * @param emergencyId Emergency ID
      * @return true if driver is assigned, false otherwise
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public boolean isDriverAssignedToEmergency(Long driverId, Long emergencyId) {
         // 1. Primary check: dispatch stores driverId on the row at assignment time.
         //    The @Query annotation ensures emergency.id traversal is unambiguous.
@@ -100,12 +103,13 @@ public class EmergencyAuthorizationService {
 
         // 2. Fallback: ambulance-based check covers the legacy assign() path
         //    where driverId was not stored on the row.
+        //    Use heartbeat-tolerant check to survive Cloudflare STOMP drops.
         Optional<EmergencyAssignment> assigned = assignmentRepository
                 .findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ASSIGNED);
         if (assigned.isPresent()) {
             com.emergency.emergency108.entity.Ambulance ambulance = assigned.get().getAmbulance();
             if (ambulance != null) {
-                return driverSessionService.isDriverOperatingAmbulance(driverId, ambulance.getId());
+                return driverSessionService.isDriverOperatingAmbulanceHeartbeatTolerant(driverId, ambulance.getId());
             }
         }
         return false;

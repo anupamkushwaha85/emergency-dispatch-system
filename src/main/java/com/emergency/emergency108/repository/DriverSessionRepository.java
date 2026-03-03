@@ -148,4 +148,25 @@ public interface DriverSessionRepository extends JpaRepository<DriverSession, Lo
        @Query("SELECT ds FROM DriverSession ds WHERE ds.status IN ('ONLINE', 'ON_TRIP') " +
                      "AND ds.sessionEndTime IS NULL")
        List<DriverSession> findActiveSessions();
+
+       /**
+        * Find any open (not ended) session for a driver, regardless of status.
+        * Used by the heartbeat-tolerant accept flow — finds OFFLINE sessions
+        * that were knocked offline by Cloudflare STOMP drops.
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "AND ds.sessionEndTime IS NULL " +
+                     "ORDER BY ds.sessionStartTime DESC")
+       Optional<DriverSession> findAnyActiveSessionByDriverId(@Param("driverId") Long driverId);
+
+       /**
+        * Find any open (not ended) session for a driver + ambulance pair, regardless of status.
+        * Heartbeat-tolerant fallback for isDriverOperatingAmbulance checks.
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "AND ds.ambulanceId = :ambulanceId " +
+                     "AND ds.sessionEndTime IS NULL")
+       Optional<DriverSession> findAnyActiveSessionByDriverAndAmbulance(
+                     @Param("driverId") Long driverId,
+                     @Param("ambulanceId") Long ambulanceId);
 }

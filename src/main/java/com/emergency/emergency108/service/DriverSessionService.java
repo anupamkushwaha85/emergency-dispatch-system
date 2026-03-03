@@ -339,10 +339,12 @@ public class DriverSessionService {
      */
     @Transactional(readOnly = true)
     public void validateCanAcceptEmergency(Long driverId, Long ambulanceId) {
-        // Check driver has active session
-        DriverSession session = sessionRepository.findActiveSessionByDriverId(driverId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Driver has no active session. Start a shift first."));
+        // Heartbeat-tolerant: try ONLINE/ON_TRIP first, fall back to recent-heartbeat OFFLINE
+        DriverSession session = getOrReactivateSession(driverId);
+        if (session == null) {
+            throw new IllegalStateException(
+                    "Driver has no active session. Start a shift first.");
+        }
 
         // INVARIANT: Driver must be ONLINE to accept new emergencies
         if (session.getStatus() != DriverSessionStatus.ONLINE) {
@@ -490,6 +492,67 @@ public class DriverSessionService {
     public boolean isDriverOperatingAmbulance(Long driverId, Long ambulanceId) {
         return sessionRepository.findActiveSessionByDriverAndAmbulance(driverId, ambulanceId)
                 .isPresent();
+    }
+
+    /**
+     * Heartbeat-tolerant version of {@link #isDriverOperatingAmbulance}.
+     *
+     * Accepts ONLINE/ON_TRIP sessions immediately.
+     * For sessions that show OFFLINE (Cloudflare killed STOMP), also accepts
+     * sessions where {@code lastHeartbeat >= now - 2 min} and auto-reactivates
+     * them to ONLINE so downstream status checks remain consistent.
+     *
+     * Used by the accept-emergency flow.
+     */
+    @Transactional
+    public boolean isDriverOperatingAmbulanceHeartbeatTolerant(Long driverId, Long ambulanceId) {
+        // Fast path: ONLINE or ON_TRIP session exists
+        if (isDriverOperatingAmbulance(driverId, ambulanceId)) {
+            return true;
+        }
+        // Slow path: any open (not ended) session with recent heartbeat
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(2);
+        return sessionRepository.findAnyActiveSessionByDriverAndAmbulance(driverId, ambulanceId)
+                .filter(s -> s.getLastHeartbeat() != null && !s.getLastHeartbeat().isBefore(cutoff))
+                .map(s -> {
+                    log.warn("Driver {} / ambulance {} session OFFLINE but recent heartbeat — "
+                            + "auto-reactivating to ONLINE for accept flow", driverId, ambulanceId);
+                    s.setStatus(DriverSessionStatus.ONLINE);
+                    sessionRepository.save(s);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    /**
+     * Get driver session — heartbeat-tolerant.
+     *
+     * Returns ONLINE/ON_TRIP sessions immediately.
+     * For OFFLINE sessions with a recent REST heartbeat (< 2 min), auto-reactivates
+     * them to ONLINE and returns the reactivated session. This covers the Cloudflare
+     * STOMP-drop scenario where the driver is alive (REST heartbeat still running)
+     * but the WebSocket was killed.
+     *
+     * Used by the accept-emergency authorization check.
+     */
+    @Transactional
+    public DriverSession getOrReactivateSession(Long driverId) {
+        // Fast path
+        DriverSession active = getActiveSession(driverId);
+        if (active != null) {
+            return active;
+        }
+        // Slow path: any open session with recent heartbeat
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(2);
+        return sessionRepository.findAnyActiveSessionByDriverId(driverId)
+                .filter(s -> s.getLastHeartbeat() != null && !s.getLastHeartbeat().isBefore(cutoff))
+                .map(s -> {
+                    log.warn("Driver {} session OFFLINE but recent heartbeat — "
+                            + "auto-reactivating to ONLINE for accept flow", driverId);
+                    s.setStatus(DriverSessionStatus.ONLINE);
+                    return sessionRepository.save(s);
+                })
+                .orElse(null);
     }
 
     /**
