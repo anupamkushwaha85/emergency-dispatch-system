@@ -177,19 +177,33 @@ public class DriverSession {
     }
 
     /**
-     * Check if driver's GPS heartbeat is stale (no update for 1 hour - testing
-     * mode).
+     * Check if driver's GPS heartbeat is stale (no update for 120 seconds).
      * Used by stale driver detection service to auto-mark drivers OFFLINE.
-     * 
-     * @return true if last heartbeat was more than 1 hour ago or never received
+     *
+     * Threshold rationale:
+     *  - REST heartbeat fires every 30 seconds (stationary) or on GPS movement.
+     *  - Stale detection job runs every 15 seconds.
+     *  - 120 seconds = 4 missed heartbeats — generous enough to survive brief
+     *    network blips or Cloudflare STOMP reconnects while the REST path is intact.
+     *  - Matches the 2-minute window used by findAvailableDriversForDispatch and
+     *    the heartbeat-tolerant accept/reactivate logic so all three subsystems
+     *    agree on what "still active" means.
+     *
+     * @return true if last heartbeat was more than 120 seconds ago or never received
      */
     public boolean isStale() {
         if (lastHeartbeat == null) {
-            return true; // No heartbeat ever received
+            // Session was just created — constructor sets lastHeartbeat = now via
+            // updateLocation(). If it is somehow null, wait until stale detection
+            // has run at least 4 cycles (4 × 15 s = 60 s) before killing it.
+            // Using sessionStartTime as fallback.
+            if (sessionStartTime == null) return true;
+            long secondsSinceStart = Duration.between(sessionStartTime, LocalDateTime.now()).getSeconds();
+            return secondsSinceStart > 120;
         }
 
         long secondsSinceLastHeartbeat = Duration.between(lastHeartbeat, LocalDateTime.now()).getSeconds();
-        return secondsSinceLastHeartbeat > 15;
+        return secondsSinceLastHeartbeat > 120;
     }
 
     /**
