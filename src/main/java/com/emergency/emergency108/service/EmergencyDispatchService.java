@@ -71,12 +71,27 @@ public class EmergencyDispatchService {
                 Emergency emergency = emergencyRepository.findById(emergencyId)
                                 .orElseThrow(() -> new IllegalArgumentException("Emergency not found: " + emergencyId));
 
-                // Driver liveness is now guaranteed by STOMP socket tracking:
-                // - When a driver's WebSocket disconnects their session is immediately set OFFLINE
-                //   by WebSocketEventListener (no heartbeat window required).
-                // - So any session with status=ONLINE here is genuinely connected right now.
-                List<DriverSession> onlineSessions = driverSessionRepository.findAllOnlineDrivers();
-                log.info("Found {} ONLINE+VERIFIED sessions for dispatch", onlineSessions.size());
+                // Use heartbeat-tolerant query:
+                // Accepts ONLINE sessions AND OFFLINE sessions with a recent REST heartbeat
+                // (guards against Cloudflare/proxy killing STOMP WebSocket → session flips to
+                // OFFLINE, but driver is still alive via REST PUT /driver/location heartbeats).
+                LocalDateTime heartbeatCutoff = LocalDateTime.now().minusMinutes(2);
+                List<DriverSession> onlineSessions = driverSessionRepository
+                                .findAvailableDriversForDispatch(heartbeatCutoff);
+                log.info("Found {} available sessions for dispatch (ONLINE or recent heartbeat)",
+                                onlineSessions.size());
+
+                // Auto-reactivate any OFFLINE-but-heartbeat-active sessions back to ONLINE
+                // so their status is consistent and downstream checks work correctly.
+                onlineSessions.forEach(session -> {
+                        if (session.getStatus() == DriverSessionStatus.OFFLINE) {
+                                log.warn("Driver {} session {} was OFFLINE but has recent heartbeat "
+                                                + "— auto-reactivating to ONLINE for dispatch",
+                                                session.getDriverId(), session.getId());
+                                session.setStatus(DriverSessionStatus.ONLINE);
+                                driverSessionRepository.save(session);
+                        }
+                });
 
                 // Exclude drivers who have already rejected this emergency
                 List<Long> rejectedDriverIds = assignmentRepository.findRejectedDriverIdsByEmergencyId(emergencyId);

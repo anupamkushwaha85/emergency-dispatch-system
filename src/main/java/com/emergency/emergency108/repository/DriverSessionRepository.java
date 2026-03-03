@@ -81,6 +81,25 @@ public interface DriverSessionRepository extends JpaRepository<DriverSession, Lo
        List<DriverSession> findEligibleOnlineDrivers(@Param("cutoffTime") LocalDateTime cutoffTime);
 
        /**
+        * Find drivers available for dispatch.
+        * Accepts ONLINE sessions AND OFFLINE sessions with a recent REST heartbeat
+        * (covers Cloudflare/proxy WebSocket timeout scenarios where the STOMP connection
+        * was dropped and the session flipped to OFFLINE, but the driver's app is still
+        * alive and sending REST PUT /driver/location heartbeats).
+        * Window: 2 minutes — generous enough to survive brief STOMP reconnects.
+        */
+       @Query("SELECT ds FROM DriverSession ds, User u " +
+                     "WHERE ds.driverId = u.id " +
+                     "AND ds.sessionEndTime IS NULL " +
+                     "AND u.driverVerificationStatus = 'VERIFIED' " +
+                     "AND (" +
+                     "  ds.status = 'ONLINE' " +
+                     "  OR (ds.status = 'OFFLINE' AND ds.lastHeartbeat IS NOT NULL AND ds.lastHeartbeat >= :heartbeatCutoff) " +
+                     ") " +
+                     "ORDER BY ds.sessionStartTime ASC")
+       List<DriverSession> findAvailableDriversForDispatch(@Param("heartbeatCutoff") LocalDateTime heartbeatCutoff);
+
+       /**
         * Find session by driver and ambulance (for validation)
         */
        @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
