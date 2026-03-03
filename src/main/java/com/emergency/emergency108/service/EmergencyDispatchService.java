@@ -149,7 +149,7 @@ public class EmergencyDispatchService {
                 assignment.setDriverId(nearestSession.getDriverId());
                 assignment.setStatus(EmergencyAssignmentStatus.ASSIGNED);
                 assignment.setAssignedAt(LocalDateTime.now());
-                assignment.setResponseDeadline(LocalDateTime.now().plusSeconds(60)); // 60 second response deadline
+                assignment.setResponseDeadline(LocalDateTime.now().plusMinutes(3)); // 3-minute response window: FCM can take 5-30s to arrive, driver needs time to unlock and respond
                 assignmentRepository.save(assignment);
 
                 // Update emergency status
