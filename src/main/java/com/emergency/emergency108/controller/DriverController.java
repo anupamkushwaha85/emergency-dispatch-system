@@ -17,6 +17,7 @@ import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.HospitalRepository;
 import com.emergency.emergency108.service.DriverSessionService;
+import com.emergency.emergency108.service.EmergencyCancellationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -45,6 +46,7 @@ public class DriverController {
     private final EmergencyAssignmentRepository assignmentRepository;
     private final EmergencyRepository emergencyRepository;
     private final AmbulanceRepository ambulanceRepository;
+    private final EmergencyCancellationService cancellationService;
 
     public DriverController(
             DriverSessionService sessionService,
@@ -52,13 +54,15 @@ public class DriverController {
             HospitalRepository hospitalRepository,
             EmergencyAssignmentRepository assignmentRepository,
             EmergencyRepository emergencyRepository,
-            AmbulanceRepository ambulanceRepository) {
+            AmbulanceRepository ambulanceRepository,
+            EmergencyCancellationService cancellationService) {
         this.sessionService = sessionService;
         this.authGuard = authGuard;
         this.hospitalRepository = hospitalRepository;
         this.assignmentRepository = assignmentRepository;
         this.emergencyRepository = emergencyRepository;
         this.ambulanceRepository = ambulanceRepository;
+        this.cancellationService = cancellationService;
     }
 
     /**
@@ -306,6 +310,34 @@ public class DriverController {
      * POST /api/driver/complete-mission
      * Body: { "emergencyId": 5, "currentLat": 28.5672, "currentLng": 77.2100 }
      */
+    /**
+     * Cancel an active mission by the driver.
+     *
+     * POST /api/driver/cancel-mission
+     * Body: { "emergencyId": 42 }
+     *
+     * Releases the driver to ONLINE, ambulance to AVAILABLE, and notifies the patient.
+     */
+    @PostMapping("/cancel-mission")
+    public ResponseEntity<?> cancelMission(@RequestBody Map<String, Object> request) {
+        authGuard.requireVerifiedDriver();
+        try {
+            Long emergencyId = Long.valueOf(request.get("emergencyId").toString());
+            Long driverId = AuthContext.getUserId();
+
+            EmergencyCancellationService.CancellationResult result =
+                    cancellationService.driverCancelMission(emergencyId, driverId);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", result.isSuccess(),
+                    "message", result.getMessage()));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (SecurityException e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, e.getMessage());
+        }
+    }
+
     @PostMapping("/complete-mission")
     @Transactional
     public ResponseEntity<?> completeMission(@RequestBody Map<String, Object> request) {

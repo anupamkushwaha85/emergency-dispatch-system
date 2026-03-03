@@ -475,9 +475,10 @@ public class EmergencyAssignmentService {
         emergencyRepository.save(emergency);
 
         // Update driver session to ON_TRIP
+        // Use startTrip() — not setStatus() — so emergenciesHandled counter is incremented
         DriverSession session = driverSessionService.getActiveSession(driverId);
         if (session != null) {
-            session.setStatus(DriverSessionStatus.ON_TRIP);
+            session.startTrip(); // increments emergenciesHandled + sets ON_TRIP
             driverSessionService.saveSession(session);
         }
 

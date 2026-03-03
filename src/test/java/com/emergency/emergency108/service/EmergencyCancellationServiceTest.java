@@ -1,6 +1,7 @@
 package com.emergency.emergency108.service;
 
 import com.emergency.emergency108.entity.*;
+import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.UserRepository;
@@ -32,6 +33,9 @@ class EmergencyCancellationServiceTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private AmbulanceRepository ambulanceRepository;
+
     private DriverSessionService driverSessionService; // Manual stub
     private EmergencyAuthorizationService authorizationService; // Manual stub
 
@@ -51,7 +55,8 @@ class EmergencyCancellationServiceTest {
                 userRepository,
                 driverSessionService,
                 authorizationService,
-                messagingTemplate);
+                messagingTemplate,
+                ambulanceRepository);
     }
 
     // Stub class for DriverSessionService

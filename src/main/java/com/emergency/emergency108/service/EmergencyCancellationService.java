@@ -2,6 +2,7 @@ package com.emergency.emergency108.service;
 
 import com.emergency.emergency108.auth.security.AuthContext;
 import com.emergency.emergency108.entity.*;
+import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.EmergencyAssignmentRepository;
 import com.emergency.emergency108.repository.UserRepository;
@@ -33,6 +34,7 @@ public class EmergencyCancellationService {
     private final DriverSessionService driverSessionService;
     private final EmergencyAuthorizationService authorizationService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AmbulanceRepository ambulanceRepository;
 
     public EmergencyCancellationService(
             EmergencyRepository emergencyRepository,
@@ -40,13 +42,15 @@ public class EmergencyCancellationService {
             UserRepository userRepository,
             DriverSessionService driverSessionService,
             EmergencyAuthorizationService authorizationService,
-            SimpMessagingTemplate messagingTemplate) {
+            SimpMessagingTemplate messagingTemplate,
+            AmbulanceRepository ambulanceRepository) {
         this.emergencyRepository = emergencyRepository;
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
         this.driverSessionService = driverSessionService;
         this.authorizationService = authorizationService;
         this.messagingTemplate = messagingTemplate;
+        this.ambulanceRepository = ambulanceRepository;
     }
 
     /**
@@ -143,6 +147,57 @@ public class EmergencyCancellationService {
     }
 
     /**
+     * Cancel an active mission by the assigned driver.
+     * Releases the driver back to ONLINE, ambulance to AVAILABLE, and notifies the patient.
+     */
+    @Transactional
+    public CancellationResult driverCancelMission(Long emergencyId, Long driverId) {
+        Emergency emergency = emergencyRepository.findById(emergencyId)
+                .orElseThrow(() -> new IllegalArgumentException("Emergency not found: " + emergencyId));
+
+        if (emergency.getStatus() == EmergencyStatus.COMPLETED
+                || emergency.getStatus() == EmergencyStatus.CANCELLED) {
+            throw new IllegalArgumentException(
+                    "Emergency is already in a terminal state: " + emergency.getStatus());
+        }
+
+        // Find the active assignment (try ACCEPTED first, then ASSIGNED)
+        Optional<EmergencyAssignment> assignmentOpt = assignmentRepository
+                .findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ACCEPTED);
+        if (assignmentOpt.isEmpty()) {
+            assignmentOpt = assignmentRepository
+                    .findByEmergencyIdAndStatus(emergencyId, EmergencyAssignmentStatus.ASSIGNED);
+        }
+        EmergencyAssignment assignment = assignmentOpt
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No active assignment found for emergency: " + emergencyId));
+
+        if (!driverId.equals(assignment.getDriverId())) {
+            throw new SecurityException("Driver " + driverId
+                    + " does not own the assignment for emergency " + emergencyId);
+        }
+
+        // Cancel the assignment
+        assignment.setStatus(EmergencyAssignmentStatus.CANCELLED);
+        assignment.setCancelledAt(LocalDateTime.now());
+        assignment.setCancellationReason("Driver cancelled mission");
+        assignmentRepository.save(assignment);
+
+        // Cancel the emergency
+        emergency.setStatus(EmergencyStatus.CANCELLED);
+        emergencyRepository.save(emergency);
+
+        // Release driver → ONLINE, ambulance → AVAILABLE, notify driver frontend
+        releaseDriver(assignment);
+
+        // Notify patient/user via WebSocket broadcast
+        broadcastEmergencyUpdate(emergency, null, "EMERGENCY_CANCELLED");
+
+        logger.warn("Driver {} cancelled active mission for emergency {}", driverId, emergencyId);
+        return new CancellationResult(true, "Mission cancelled by driver", false, null);
+    }
+
+    /**
      * Handle early cancellation (within 100 seconds, no driver assigned).
      * No penalty for user.
      */
@@ -236,8 +291,8 @@ public class EmergencyCancellationService {
                 Ambulance ambulance = assignment.getAmbulance();
                 if (ambulance != null && ambulance.getStatus() == AmbulanceStatus.BUSY) {
                     ambulance.setStatus(AmbulanceStatus.AVAILABLE);
-                    // Save ambulance through repository (assuming it's managed)
-                    logger.info("Ambulance {} set to AVAILABLE", ambulance.getId());
+                    ambulanceRepository.save(ambulance); // persist — was missing before
+                    logger.info("Ambulance {} set to AVAILABLE after cancellation", ambulance.getId());
                 }
             } catch (Exception e) {
                 logger.error("Error releasing driver {}: {}", driverId, e.getMessage());
