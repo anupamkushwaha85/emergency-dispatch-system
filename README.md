@@ -8,6 +8,7 @@
 ![WebSocket](https://img.shields.io/badge/WebSocket-STOMP-blueviolet?logo=socketdotio)
 ![Firebase](https://img.shields.io/badge/Firebase-FCM-FFCA28?logo=firebase&logoColor=black)
 ![JWT](https://img.shields.io/badge/Auth-JWT-black?logo=jsonwebtokens)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6DB33F?logo=springsecurity&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Containerised-2496ED?logo=docker&logoColor=white)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
 ![Deployed on Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=white)
