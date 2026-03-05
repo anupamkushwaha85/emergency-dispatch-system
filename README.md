@@ -8,8 +8,12 @@
 ![WebSocket](https://img.shields.io/badge/WebSocket-STOMP-blueviolet?logo=socketdotio)
 ![Firebase](https://img.shields.io/badge/Firebase-FCM-FFCA28?logo=firebase&logoColor=black)
 ![JWT](https://img.shields.io/badge/Auth-JWT-black?logo=jsonwebtokens)
+![Docker](https://img.shields.io/badge/Docker-Containerised-2496ED?logo=docker&logoColor=white)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)
 ![Deployed on Render](https://img.shields.io/badge/Deployed%20on-Render-46E3B7?logo=render&logoColor=white)
 ![DB on Aiven](https://img.shields.io/badge/Database-Aiven%20MySQL-FF5252?logo=aiven&logoColor=white)
+![Mobile App](https://img.shields.io/badge/Mobile%20App-Flutter-02569B?logo=flutter&logoColor=white)
+![Admin Panel](https://img.shields.io/badge/Admin%20Panel-React-61DAFB?logo=react&logoColor=black)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Stable-success)
 
@@ -195,6 +199,135 @@ com.emergency.emergency108
 
 ---
 
+## 🧠 How Key Features Work
+
+### 📍 Geospatial Dispatch — Haversine Formula
+
+Both ambulance dispatch and nearest-hospital selection use the **Haversine formula**, which calculates the great-circle distance between two points on the Earth's surface given their latitude/longitude coordinates.
+
+$$
+a = \sin^2\!\left(\frac{\Delta\phi}{2}\right) + \cos\phi_1 \cdot \cos\phi_2 \cdot \sin^2\!\left(\frac{\Delta\lambda}{2}\right)
+$$
+$$
+d = 2R \cdot \arctan2\!\left(\sqrt{a},\, \sqrt{1 - a}\right)
+$$
+
+Where $\phi$ = latitude, $\lambda$ = longitude, $R$ = 6,371 km (Earth's mean radius).
+
+**Used in three places:**
+
+| Use Case | Implementation | Threshold |
+|---|---|---|
+| **Nearest ambulance** | `GeoUtil.distanceKm()` in `EmergencyDispatchService` — streams all online drivers and picks the one with minimum Haversine distance to the emergency location | No threshold; picks closest |
+| **Nearest hospital** | Native SQL Haversine query in `HospitalRepository.findNearestHospitals()` — runs directly in MySQL, returns ordered results | Top N results |
+| **Mission completion** | `DistanceCalculator.calculateDistance()` in `EmergencyAuthorizationService` — validates driver is physically at the hospital before allowing completion | Must be ≤ 100 metres |
+
+```java
+// GeoUtil.java — used for ambulance dispatch
+double dLat = Math.toRadians(lat2 - lat1);
+double dLon = Math.toRadians(lon2 - lon1);
+double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+         + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+         * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+return 6371 * c; // km
+```
+
+---
+
+### 🚨 Emergency Creation — Self vs Someone Else
+
+When a user creates an emergency via `POST /api/emergencies`, the backend immediately saves it with an `emergencyFor` value of `UNKNOWN` and starts a **30-second ownership decision window**.
+
+```
+User calls POST /api/emergencies
+        │
+        ▼
+Emergency saved (status=CREATED, emergencyFor=UNKNOWN)
+        │
+        ├──► Admin panel notified via WebSocket
+        ├──► Nearby helpers notified via FCM (within 3 km)
+        │
+        ▼
+30-second window: PUT /api/emergencies/{id}/ownership
+        │
+        ├── emergencyFor = SELF
+        │       └──► Emergency contacts are notified (family/friends alerted)
+        │
+        ├── emergencyFor = OTHER
+        │       └──► Contact notifications skipped (caller is bystander)
+        │
+        └── No response within 30s
+                └──► Scheduler auto-defaults to SELF (safety net)
+```
+
+**Rules:**
+- Once set, `emergencyFor` is **immutable** — cannot be changed again
+- Only `SELF` emergencies appear in the **Helping Hand** feed (respects victim privacy)
+- The `EmergencyFor` enum has three states: `SELF`, `OTHER`, `UNKNOWN`
+
+---
+
+### 🤝 Helping Hand — Community First Responder Network
+
+Helping Hand is an opt-in feature that turns nearby users into community first responders. Users who enable it share their background location and receive alerts when an emergency happens close to them.
+
+```
+User opts in (PUT /api/users/preferences/helping-hand)
+        │
+        ▼
+User periodically posts location (POST /api/helping-hand/location)
+        │
+        ▼
+Emergency is created (emergencyFor = SELF)
+        │
+        ▼
+Backend finds all users within 3 km radius:
+  Rules applied:
+  ✔ Role must be PUBLIC
+  ✔ helpingHandEnabled = true
+  ✔ Location updated within last 24 hours
+  ✔ Must not be the victim themselves
+        │
+        ▼
+FCM batch push → "🚨 Emergency Nearby!"
+  Payload: { type, emergencyId, latitude, longitude }
+        │
+        ▼
+Helper opens app → GET /api/helping-hand/nearby-emergencies
+  Privacy-filtered response (NearbyEmergencyDTO):
+  ✔ Victim first name only (or "User nearby")
+  ✔ Approximate location, distance, emergency type, status
+  ✘ No phone number, address, or medical details exposed
+  ✘ Capped at 5 nearest results, sorted by distance
+```
+
+**Privacy guarantees:** The `NearbyEmergencyDTO` deliberately strips all sensitive fields — only non-identifiable information is shared with helpers. Only `SELF`-type emergencies enter the feed; emergencies reported for someone else are excluded.
+
+---
+
+## 🔄 CI/CD Pipeline
+
+Automated via **GitHub Actions** (`.github/workflows/render-deploy.yml`):
+
+```
+Push to master / Pull Request
+        │
+        ▼
+① Build & Test (ubuntu-latest, JDK 21)
+   └── mvn clean verify (runs all unit + integration tests)
+        │
+        ▼
+② Deploy to Render
+   └── Triggers Render deploy hook → Docker image built & deployed
+```
+
+- Tests must pass before any deploy
+- Render auto-restarts the container on successful image push
+- A second workflow (`keep_db_alive.yml`) runs on a schedule to ping the Aiven DB and prevent idle disconnects on free-tier
+
+---
+
 ## ☁️ Deployment
 
 ### Render (Application Host)
@@ -202,7 +335,7 @@ com.emergency.emergency108
 The service is containerised and deployed on **[Render](https://render.com)** using the included `Dockerfile` (multi-stage Maven + JRE Alpine build).
 
 - Port is dynamically injected via `$PORT` environment variable
-- Zero-downtime deploys via Docker image push
+- Automated deploys on every push to `master` via GitHub Actions CI/CD
 
 ### Aiven (Managed MySQL Database)
 
