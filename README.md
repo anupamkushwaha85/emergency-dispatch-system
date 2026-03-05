@@ -306,6 +306,53 @@ Helper opens app → GET /api/helping-hand/nearby-emergencies
 
 ---
 
+### 🤖 AI Assistance — Rule-Based Engine (LLM-Ready)
+
+When an emergency is created, the caller or the app can submit structured triage data to `POST /api/emergencies/{id}/ai-assessment`. The backend runs this through `AiAssistanceService`, which currently uses a **deterministic rule-based engine** to generate safe, medically conservative first-aid instructions that are stored on the emergency and shown to the driver and hospital.
+
+**How the rule engine works:**
+
+```
+Triage input: { emergencyType, isConscious, isBleeding }
+        │
+        ├── isConscious = false
+        │       └──► "CRITICAL: Check breathing. If not breathing, start CPR..."
+        │
+        ├── isBleeding = true
+        │       └──► "Apply firm direct pressure to the wound with a clean cloth..."
+        │
+        ├── type = ACCIDENT
+        │       └──► "Do not move the patient unless there is immediate danger..."
+        │
+        └── default (conscious, stable)
+                └──► "Stay calm. Keep the patient warm. Do not give anything to eat or drink..."
+```
+
+**Output fields stored on the emergency:**
+
+| Field | Description |
+|---|---|
+| `aiAssessment` | Full structured assessment JSON |
+| `aiFirstAid` | Concise first-aid steps shown to bystander/user |
+| `aiDoctorSummary` | Clinical summary sent to driver and receiving hospital |
+
+**Architecture — pluggable provider:**
+
+The system is designed with a clean provider abstraction in `AiConfig`:
+
+```properties
+app.ai.enabled=true
+app.ai.provider=rule_based   # switch to "spring_ai" when LLM is integrated
+```
+
+A `callSpringAi()` stub is already present in `AiAssistanceService` and wired into the dispatch logic with a try/catch fallback to the rule engine — meaning swapping in a real LLM requires **zero structural changes**.
+
+**🔮 Planned: LLM Integration**
+
+> The rule-based engine is the stable foundation. In a future release, the `app.ai.provider` will be switched to a large language model (e.g. via **Spring AI** with OpenAI / Gemini / a self-hosted model) for richer, context-aware guidance — including multi-turn triage conversations, dynamic severity re-assessment during the emergency, and language-localised instructions. The fallback to the rule engine will remain as a safety net so the system never has zero AI capability.
+
+---
+
 ## 🔄 CI/CD Pipeline
 
 Automated via **GitHub Actions** (`.github/workflows/render-deploy.yml`):
