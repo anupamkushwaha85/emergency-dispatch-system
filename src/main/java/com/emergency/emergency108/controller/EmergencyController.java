@@ -522,7 +522,21 @@ public class EmergencyController {
             trackingData.put("etaMinutes", etaMinutes);
             trackingData.put("lastGpsUpdate", session.getLocationUpdatedAt());
             trackingData.put("driverStatus", session.getStatus().toString());
-            trackingData.put("message", "Ambulance en route");
+
+            // Status-aware message so the patient app reflects the actual phase
+            switch (emergency.getStatus()) {
+                case AT_PATIENT:
+                    trackingData.put("message", "Driver has arrived at your location");
+                    break;
+                case TO_HOSPITAL:
+                    trackingData.put("message", "Transporting patient to hospital");
+                    break;
+                case COMPLETED:
+                    trackingData.put("message", "Mission completed — patient delivered");
+                    break;
+                default:
+                    trackingData.put("message", "Ambulance en route");
+            }
 
             // Include hospital destination so user-side map routes correctly during TO_HOSPITAL phase
             if (assignment.getDestinationHospital() != null) {
