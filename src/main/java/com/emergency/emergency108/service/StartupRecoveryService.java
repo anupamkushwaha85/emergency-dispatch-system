@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
+ * Service implementation for StartupRecovery operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -45,6 +47,9 @@ public class StartupRecoveryService {
         this.metrics = metrics;
     }
 
+    /**
+     * Recover system state operation.
+     */
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void recoverSystemState() {
