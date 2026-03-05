@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import java.util.Map;
 
 /**
+ * Service implementation for AiAssistance operations.
+ *
  * @author anupam kushwaha
  */
 @Service

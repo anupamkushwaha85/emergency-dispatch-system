@@ -19,6 +19,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
+ * Service implementation for HelpingHand operations.
+ *
  * @author anupam kushwaha
  */
 @Service

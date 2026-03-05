@@ -18,6 +18,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * REST Controller for managing DriverVerification endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController

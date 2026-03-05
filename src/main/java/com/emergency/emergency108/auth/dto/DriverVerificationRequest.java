@@ -1,6 +1,8 @@
 package com.emergency.emergency108.auth.dto;
 
 /**
+ * Represents the DriverVerificationRequest component in the system.
+ *
  * @author anupam kushwaha
  */
 public class DriverVerificationRequest {
@@ -18,6 +20,10 @@ public class DriverVerificationRequest {
         return documentUrl;
     }
 
+    /**
+     * Set document url operation.
+     * @param documentUrl the documentUrl
+     */
     public void setDocumentUrl(String documentUrl) {
         this.documentUrl = documentUrl;
     }

@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * REST Controller for managing Ambulance endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController
@@ -35,6 +37,10 @@ public class AmbulanceController {
         this.tokenService = tokenService;
     }
 
+    /**
+     * Get all ambulances operation.
+     * @return the List<Ambulance>
+     */
     @GetMapping
     public List<Ambulance> getAllAmbulances() {
         return ambulanceRepository.findAll();

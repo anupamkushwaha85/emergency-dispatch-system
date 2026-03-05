@@ -12,6 +12,8 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
+ * Service implementation for EmergencyTimeline operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -27,6 +29,11 @@ public class EmergencyTimelineService {
         this.assignmentRepository = assignmentRepository;
     }
 
+    /**
+     * Get timeline operation.
+     * @param emergencyId the emergencyId
+     * @return the List<EmergencyTimelineEvent>
+     */
     public List<EmergencyTimelineEvent> getTimeline(Long emergencyId) {
 
         Emergency emergency = emergencyRepository.findById(emergencyId)

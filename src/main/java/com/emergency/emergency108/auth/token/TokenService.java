@@ -12,6 +12,8 @@ import java.time.Instant;
 import java.util.Date;
 
 /**
+ * Service implementation for Token operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -28,6 +30,11 @@ public class TokenService {
 
         private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes(StandardCharsets.UTF_8));
 
+    /**
+     * Generate operation.
+     * @param payload the payload
+     * @return the String
+     */
         public String generate(AuthTokenPayload payload) {
 
                 Instant now = Instant.now();
@@ -41,6 +48,11 @@ public class TokenService {
                                 .compact();
         }
 
+    /**
+     * Validate and parse operation.
+     * @param token the token
+     * @return the AuthTokenPayload
+     */
         public AuthTokenPayload validateAndParse(String token) {
 
                 Claims claims = Jwts.parserBuilder()

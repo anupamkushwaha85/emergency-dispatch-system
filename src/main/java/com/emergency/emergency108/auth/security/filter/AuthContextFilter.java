@@ -23,6 +23,8 @@ import java.io.IOException;
  * Clears context after request completion.
  */
 /**
+ * Represents the AuthContextFilter component in the system.
+ *
  * @author anupam kushwaha
  */
 @Component

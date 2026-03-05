@@ -21,12 +21,18 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  * /topic/driver/{driverId} — Per-driver channel (for targeted commands)
  */
 /**
+ * Configuration class for WebSocket settings.
+ *
  * @author anupam kushwaha
  */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    /**
+     * Configure message broker operation.
+     * @param registry the registry
+     */
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // Enable a simple in-memory message broker for broadcasting
@@ -35,6 +41,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.setApplicationDestinationPrefixes("/app");
     }
 
+    /**
+     * Register stomp endpoints operation.
+     * @param registry the registry
+     */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Primary WebSocket endpoint. Flutter app uses raw ws://host/ws

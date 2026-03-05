@@ -18,6 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 /**
+ * REST Controller for managing DriverDocument endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController
@@ -32,6 +34,11 @@ public class DriverDocumentController {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Upload document operation.
+     * @param request the request
+     * @return the ResponseEntity<?>
+     */
     @PostMapping("/upload-document")
     public ResponseEntity<?> uploadDocument(@RequestBody DocumentUploadRequest request) {
         // 1. Ensure user is a DRIVER (Verified or Not)

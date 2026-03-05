@@ -14,6 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 /**
+ * REST Controller for managing User endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController

@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
+ * Service implementation for Hospital operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -19,11 +21,20 @@ public class HospitalService {
         this.hospitalRepository = hospitalRepository;
     }
 
+    /**
+     * Get all hospitals operation.
+     * @return the List<Hospital>
+     */
     @Transactional(readOnly = true)
     public List<Hospital> getAllHospitals() {
         return hospitalRepository.findAll();
     }
 
+    /**
+     * Add hospital operation.
+     * @param hospital the hospital
+     * @return the Hospital
+     */
     @Transactional
     public Hospital addHospital(Hospital hospital) {
         return hospitalRepository.save(hospital);

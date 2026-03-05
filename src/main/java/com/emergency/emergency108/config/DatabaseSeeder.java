@@ -14,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 
 /**
+ * Represents the DatabaseSeeder component in the system.
+ *
  * @author anupam kushwaha
  */
 @Configuration

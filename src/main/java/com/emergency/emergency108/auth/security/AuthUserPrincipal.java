@@ -3,6 +3,8 @@ package com.emergency.emergency108.auth.security;
 import com.emergency.emergency108.entity.UserRole;
 
 /**
+ * Represents the AuthUserPrincipal component in the system.
+ *
  * @author anupam kushwaha
  */
 public class AuthUserPrincipal {
@@ -24,10 +26,18 @@ public class AuthUserPrincipal {
         this.driverVerified = driverVerified;
     }
 
+    /**
+     * Get user id operation.
+     * @return the Long
+     */
     public Long getUserId() {
         return userId;
     }
 
+    /**
+     * Get role operation.
+     * @return the UserRole
+     */
     public UserRole getRole() {
         return role;
     }
@@ -38,10 +48,18 @@ public class AuthUserPrincipal {
         return role == UserRole.DRIVER;
     }
 
+    /**
+     * Is public user operation.
+     * @return the boolean
+     */
     public boolean isPublicUser() {
         return role == UserRole.PUBLIC;
     }
 
+    /**
+     * Is admin operation.
+     * @return the boolean
+     */
     public boolean isAdmin() {
         return role == UserRole.ADMIN;
     }
@@ -52,6 +70,10 @@ public class AuthUserPrincipal {
         return blocked;
     }
 
+    /**
+     * Is driver verified operation.
+     * @return the boolean
+     */
     public boolean isDriverVerified() {
         return driverVerified;
     }

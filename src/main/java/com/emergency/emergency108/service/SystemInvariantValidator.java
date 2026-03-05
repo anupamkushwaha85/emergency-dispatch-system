@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
+ * Represents the SystemInvariantValidator component in the system.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -39,6 +41,9 @@ public class SystemInvariantValidator {
         this.emergencyRepository = emergencyRepository;
     }
 
+    /**
+     * Validate invariants operation.
+     */
     @Scheduled(fixedRate = 60000)
     @Transactional
     public void validateInvariants() {

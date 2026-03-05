@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
+ * REST Controller for managing OtpAuth endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController

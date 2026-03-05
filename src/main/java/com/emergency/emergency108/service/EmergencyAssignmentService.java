@@ -29,6 +29,8 @@ import java.util.HashMap;
 import com.emergency.emergency108.service.FCMNotificationService;
 
 /**
+ * Service implementation for EmergencyAssignment operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -69,10 +71,21 @@ public class EmergencyAssignmentService {
         this.fcmNotificationService = fcmNotificationService;
     }
 
+    /**
+     * Is already assigned operation.
+     * @param emergencyId the emergencyId
+     * @return the boolean
+     */
     public boolean isAlreadyAssigned(Long emergencyId) {
         return assignmentRepository.existsByEmergencyId(emergencyId);
     }
 
+    /**
+     * Assign operation.
+     * @param emergency the emergency
+     * @param ambulance the ambulance
+     * @return the EmergencyAssignment
+     */
     @Transactional
     public EmergencyAssignment assign(Emergency emergency, Ambulance ambulance) {
 
@@ -134,6 +147,10 @@ public class EmergencyAssignmentService {
                 emergency.getStatus());
     }
 
+    /**
+     * Mark emergency in progress operation.
+     * @param emergency the emergency
+     */
     @Transactional
     public void markEmergencyInProgress(Emergency emergency) {
 
@@ -145,6 +162,12 @@ public class EmergencyAssignmentService {
         emergencyRepository.save(emergency);
     }
 
+    /**
+     * Reject and retry operation.
+     * @param emergency the emergency
+     * @param rejectedAmbulance the rejectedAmbulance
+     * @return the Ambulance
+     */
     @Transactional
     public Ambulance rejectAndRetry(Emergency emergency, Ambulance rejectedAmbulance) {
 
@@ -174,6 +197,9 @@ public class EmergencyAssignmentService {
         return null;
     }
 
+    /**
+     * Handle timeouts operation.
+     */
     @Transactional
     public void handleTimeouts() {
 
@@ -354,6 +380,10 @@ public class EmergencyAssignmentService {
         }
     }
 
+    /**
+     * Complete emergency operation.
+     * @param emergencyId the emergencyId
+     */
     @Transactional
     public void completeEmergency(Long emergencyId) {
 

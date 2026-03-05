@@ -20,6 +20,8 @@ import org.springframework.stereotype.Controller;
  * via StompSessionRegistry — the client cannot spoof a different driver ID.
  */
 /**
+ * REST Controller for managing WebSocket endpoints.
+ *
  * @author anupam kushwaha
  */
 @Controller

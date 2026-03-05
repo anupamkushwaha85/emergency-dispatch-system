@@ -24,6 +24,8 @@ import java.util.Optional;
  * Handles driver shifts, location updates, and session lifecycle.
  */
 /**
+ * Service implementation for DriverSession operations.
+ *
  * @author anupam kushwaha
  */
 @Service

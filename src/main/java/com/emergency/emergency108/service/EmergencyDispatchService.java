@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 
 /**
+ * Service implementation for EmergencyDispatch operations.
+ *
  * @author anupam kushwaha
  */
 @Service

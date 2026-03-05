@@ -24,6 +24,8 @@ import java.util.Optional;
  * Purpose: Detect data corruption or crash recovery issues.
  */
 /**
+ * Represents the DriverSessionInvariantValidator component in the system.
+ *
  * @author anupam kushwaha
  */
 @Service

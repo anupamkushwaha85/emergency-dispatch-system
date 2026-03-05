@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
+ * Configuration class for Firebase settings.
+ *
  * @author anupam kushwaha
  */
 @Configuration
@@ -20,6 +22,9 @@ public class FirebaseConfig {
 
     private static final Logger log = LoggerFactory.getLogger(FirebaseConfig.class);
 
+    /**
+     * Initialize firebase operation.
+     */
     @PostConstruct
     public void initializeFirebase() {
         try {

@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
+ * REST Controller for managing Hospital endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController
@@ -35,6 +37,10 @@ public class HospitalController {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Get all hospitals operation.
+     * @return the ResponseEntity<?>
+     */
     @GetMapping
     public ResponseEntity<?> getAllHospitals() {
         try {

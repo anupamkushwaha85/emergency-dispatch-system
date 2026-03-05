@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
+ * REST Controller for managing HelpingHand endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController

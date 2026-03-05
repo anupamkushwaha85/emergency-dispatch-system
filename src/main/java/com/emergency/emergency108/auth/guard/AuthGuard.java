@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
+ * Represents the AuthGuard component in the system.
+ *
  * @author anupam kushwaha
  */
 @Component

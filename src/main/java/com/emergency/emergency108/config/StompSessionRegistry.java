@@ -17,6 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * from the broker thread pool never race.
  */
 /**
+ * Represents the StompSessionRegistry component in the system.
+ *
  * @author anupam kushwaha
  */
 @Component
@@ -27,6 +29,11 @@ public class StompSessionRegistry {
     /** STOMP session ID → driver user ID */
     private final ConcurrentHashMap<String, Long> sessionToDriver = new ConcurrentHashMap<>();
 
+    /**
+     * Register operation.
+     * @param sessionId the sessionId
+     * @param driverId the driverId
+     */
     public void register(String sessionId, Long driverId) {
         sessionToDriver.put(sessionId, driverId);
         log.debug("Registered STOMP session {} → driver {}", sessionId, driverId);
@@ -40,6 +47,10 @@ public class StompSessionRegistry {
         return sessionToDriver.get(sessionId);
     }
 
+    /**
+     * Remove operation.
+     * @param sessionId the sessionId
+     */
     public void remove(String sessionId) {
         Long removed = sessionToDriver.remove(sessionId);
         if (removed != null) {
@@ -47,6 +58,10 @@ public class StompSessionRegistry {
         }
     }
 
+    /**
+     * Size operation.
+     * @return the int
+     */
     public int size() {
         return sessionToDriver.size();
     }

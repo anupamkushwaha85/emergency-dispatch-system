@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * Represents the AssignmentTimeoutScheduler component in the system.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -27,6 +29,9 @@ public class AssignmentTimeoutScheduler {
         this.systemReadiness = systemReadiness;
     }
 
+    /**
+     * Run timeout check operation.
+     */
     @Scheduled(fixedRate = 30000)
     public void runTimeoutCheck() {
 

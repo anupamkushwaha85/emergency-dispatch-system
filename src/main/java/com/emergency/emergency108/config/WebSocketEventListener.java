@@ -23,6 +23,8 @@ import java.util.List;
  *             phone battery death, or OS kill.
  */
 /**
+ * Represents the WebSocketEventListener component in the system.
+ *
  * @author anupam kushwaha
  */
 @Component
@@ -38,6 +40,10 @@ public class WebSocketEventListener {
         this.sessionService = sessionService;
     }
 
+    /**
+     * Handle connect operation.
+     * @param event the event
+     */
     @EventListener
     public void handleConnect(SessionConnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
@@ -62,6 +68,10 @@ public class WebSocketEventListener {
         }
     }
 
+    /**
+     * Handle disconnect operation.
+     * @param event the event
+     */
     @EventListener
     public void handleDisconnect(SessionDisconnectEvent event) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());

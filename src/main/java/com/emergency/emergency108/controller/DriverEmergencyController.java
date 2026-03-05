@@ -15,6 +15,8 @@ import java.util.Map;
  * All endpoints require VERIFIED + ONLINE driver authentication.
  */
 /**
+ * REST Controller for managing DriverEmergency endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController

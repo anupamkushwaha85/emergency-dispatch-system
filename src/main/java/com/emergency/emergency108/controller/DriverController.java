@@ -35,6 +35,8 @@ import java.util.Map;
  * Handles driver shifts, location updates, and session queries.
  */
 /**
+ * REST Controller for managing Driver endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController
@@ -341,6 +343,12 @@ public class DriverController {
         }
     }
 
+    /**
+     * Complete mission operation.
+     * @param String the String
+     * @param request the request
+     * @return the ResponseEntity<?>
+     */
     @PostMapping("/complete-mission")
     @Transactional
     public ResponseEntity<?> completeMission(@RequestBody Map<String, Object> request) {

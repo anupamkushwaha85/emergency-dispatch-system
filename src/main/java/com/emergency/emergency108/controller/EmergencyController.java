@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
+ * REST Controller for managing Emergency endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController
@@ -182,6 +184,11 @@ public class EmergencyController {
                 "generatedAdvice", assessmentToStore));
     }
 
+    /**
+     * Create emergency operation.
+     * @param emergency the emergency
+     * @return the Emergency
+     */
     @PostMapping
     public Emergency createEmergency(@RequestBody Emergency emergency) {
 
@@ -261,6 +268,11 @@ public class EmergencyController {
         }
     }
 
+    /**
+     * Timeline operation.
+     * @param id the id
+     * @return the List<EmergencyTimelineEvent>
+     */
     @GetMapping("/{id}/timeline")
     public List<EmergencyTimelineEvent> timeline(@PathVariable Long id) {
         authGuard.requireAuthenticated();

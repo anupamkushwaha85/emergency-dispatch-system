@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 import java.util.Random;
 
 /**
+ * Service implementation for Otp operations.
+ *
  * @author anupam kushwaha
  */
 @Service

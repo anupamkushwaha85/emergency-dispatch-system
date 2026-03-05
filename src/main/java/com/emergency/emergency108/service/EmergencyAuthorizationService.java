@@ -15,6 +15,8 @@ import java.util.Optional;
  * Ensures proper access control for emergency operations.
  */
 /**
+ * Service implementation for EmergencyAuthorization operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -201,14 +203,26 @@ public class EmergencyAuthorizationService {
             this.message = message;
         }
 
+    /**
+     * Is valid operation.
+     * @return the boolean
+     */
         public boolean isValid() {
             return valid;
         }
 
+    /**
+     * Get distance operation.
+     * @return the Double
+     */
         public Double getDistance() {
             return distance;
         }
 
+    /**
+     * Get message operation.
+     * @return the String
+     */
         public String getMessage() {
             return message;
         }

@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
+ * REST Controller for managing SystemHealth endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController
@@ -18,6 +20,10 @@ public class SystemHealthController {
         this.systemReadiness = systemReadiness;
     }
 
+    /**
+     * System health operation.
+     * @return the Map<String, Object>
+     */
     @GetMapping("/health/system")
     public Map<String, Object> systemHealth() {
         return Map.of(

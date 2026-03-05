@@ -17,6 +17,8 @@ import java.util.List;
  * Runs every 10 seconds to find CREATED emergencies past 100-second deadline and auto-dispatch them.
  */
 /**
+ * Represents the EmergencyConfirmationScheduler component in the system.
+ *
  * @author anupam kushwaha
  */
 @Service

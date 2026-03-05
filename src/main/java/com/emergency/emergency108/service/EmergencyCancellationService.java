@@ -24,6 +24,8 @@ import com.emergency.emergency108.dto.EmergencyUpdateDTO;
  * driver assigned) logic.
  */
 /**
+ * Service implementation for EmergencyCancellation operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -387,18 +389,34 @@ public class EmergencyCancellationService {
             this.penaltyReason = penaltyReason;
         }
 
+    /**
+     * Is success operation.
+     * @return the boolean
+     */
         public boolean isSuccess() {
             return success;
         }
 
+    /**
+     * Get message operation.
+     * @return the String
+     */
         public String getMessage() {
             return message;
         }
 
+    /**
+     * Is suspect operation.
+     * @return the boolean
+     */
         public boolean isSuspect() {
             return isSuspect;
         }
 
+    /**
+     * Get penalty reason operation.
+     * @return the String
+     */
         public String getPenaltyReason() {
             return penaltyReason;
         }

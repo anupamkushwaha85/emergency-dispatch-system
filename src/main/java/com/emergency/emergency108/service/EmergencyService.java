@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Delegates dispatch to EmergencyDispatchService.
  */
 /**
+ * Service implementation for Emergency operations.
+ *
  * @author anupam kushwaha
  */
 @Service

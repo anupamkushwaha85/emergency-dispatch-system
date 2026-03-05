@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
+ * Service implementation for EmergencyAutoReassign operations.
+ *
  * @author anupam kushwaha
  */
 @Service
@@ -35,6 +37,9 @@ public class EmergencyAutoReassignService {
         this.ambulanceRepository = ambulanceRepository;
     }
 
+    /**
+     * Handle timeouts operation.
+     */
     @Transactional
     public void handleTimeouts() {
 

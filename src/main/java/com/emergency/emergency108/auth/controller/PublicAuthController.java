@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
+ * REST Controller for managing PublicAuth endpoints.
+ *
  * @author anupam kushwaha
  */
 @RestController

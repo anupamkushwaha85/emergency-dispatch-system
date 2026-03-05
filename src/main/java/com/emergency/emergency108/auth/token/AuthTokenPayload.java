@@ -3,6 +3,8 @@ package com.emergency.emergency108.auth.token;
 import com.emergency.emergency108.entity.UserRole;
 
 /**
+ * Represents the AuthTokenPayload component in the system.
+ *
  * @author anupam kushwaha
  */
 public class AuthTokenPayload {
@@ -15,10 +17,18 @@ public class AuthTokenPayload {
         this.role = role;
     }
 
+    /**
+     * Get user id operation.
+     * @return the Long
+     */
     public Long getUserId() {
         return userId;
     }
 
+    /**
+     * Get role operation.
+     * @return the UserRole
+     */
     public UserRole getRole() {
         return role;
     }

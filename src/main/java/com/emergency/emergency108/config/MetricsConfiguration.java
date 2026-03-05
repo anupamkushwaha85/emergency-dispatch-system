@@ -4,6 +4,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.context.annotation.Configuration;
 
 /**
+ * Represents the MetricsConfiguration component in the system.
+ *
  * @author anupam kushwaha
  */
 @Configuration

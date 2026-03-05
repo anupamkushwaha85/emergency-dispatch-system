@@ -20,6 +20,8 @@ import java.util.List;
  * Auto-rejects timed-out assignments and re-dispatches to next driver.
  */
 /**
+ * Represents the DriverTimeoutScheduler component in the system.
+ *
  * @author anupam kushwaha
  */
 @Service
