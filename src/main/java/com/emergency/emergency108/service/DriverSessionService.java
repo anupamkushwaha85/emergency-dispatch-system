@@ -7,6 +7,8 @@ import com.emergency.emergency108.metrics.DomainMetrics;
 import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.DriverSessionRepository;
 import com.emergency.emergency108.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -683,6 +685,14 @@ public class DriverSessionService {
     @Transactional(readOnly = true)
     public List<DriverSession> getDriverHistory(Long driverId) {
         return sessionRepository.findAllByDriverId(driverId);
+    }
+
+    /**
+     * Get driver's session history with pagination.
+     */
+    @Transactional(readOnly = true)
+    public Page<DriverSession> getDriverHistory(Long driverId, Pageable pageable) {
+        return sessionRepository.findHistoryByDriverId(driverId, pageable);
     }
 
     /**
