@@ -12,6 +12,9 @@ import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * @author anupam kushwaha
+ */
 @Configuration
 public class FirebaseConfig {
 

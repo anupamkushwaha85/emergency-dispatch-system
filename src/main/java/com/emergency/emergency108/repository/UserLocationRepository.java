@@ -4,6 +4,9 @@ import com.emergency.emergency108.entity.UserLocation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
+/**
+ * @author anupam kushwaha
+ */
 public interface UserLocationRepository extends JpaRepository<UserLocation, Long> {
     Optional<UserLocation> findByUser_Id(Long userId);
 }

@@ -1,5 +1,8 @@
 package com.emergency.emergency108.util;
 
+/**
+ * @author anupam kushwaha
+ */
 public class GeoUtil {
 
     private static final double EARTH_RADIUS_KM = 6371;

@@ -6,6 +6,9 @@ import com.emergency.emergency108.entity.DriverSessionStatus;
  * Broadcast payload for /topic/driver-status
  * Sent when a driver goes ONLINE, OFFLINE, or ON_TRIP.
  */
+/**
+ * @author anupam kushwaha
+ */
 public class DriverStatusDTO {
 
     private Long driverId;

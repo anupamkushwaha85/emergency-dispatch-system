@@ -2,6 +2,9 @@ package com.emergency.emergency108.auth.dto;
 
 import com.emergency.emergency108.entity.UserRole;
 
+/**
+ * @author anupam kushwaha
+ */
 public class SendOtpRequest {
     private String phone;
     private UserRole role;

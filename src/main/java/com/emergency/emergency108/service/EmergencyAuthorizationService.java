@@ -14,6 +14,9 @@ import java.util.Optional;
  * Service for emergency-related authorization checks.
  * Ensures proper access control for emergency operations.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Service
 public class EmergencyAuthorizationService {
 

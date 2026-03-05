@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
  * Tracks ambulance GPS location history during emergency trips.
  * Used for tracking, replay, and analytics.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(
     name = "ambulance_location_logs",

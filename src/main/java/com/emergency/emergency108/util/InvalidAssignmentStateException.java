@@ -3,6 +3,9 @@ package com.emergency.emergency108.util;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+/**
+ * @author anupam kushwaha
+ */
 @ResponseStatus(HttpStatus.CONFLICT)
 public class InvalidAssignmentStateException extends RuntimeException {
     public InvalidAssignmentStateException(String message) {

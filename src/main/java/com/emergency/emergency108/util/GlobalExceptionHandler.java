@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/**
+ * @author anupam kushwaha
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

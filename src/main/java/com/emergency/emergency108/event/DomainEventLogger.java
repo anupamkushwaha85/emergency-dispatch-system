@@ -5,6 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+/**
+ * @author anupam kushwaha
+ */
 @Component
 public class DomainEventLogger {
 

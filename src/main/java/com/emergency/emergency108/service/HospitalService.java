@@ -7,6 +7,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * @author anupam kushwaha
+ */
 @Service
 public class HospitalService {
 

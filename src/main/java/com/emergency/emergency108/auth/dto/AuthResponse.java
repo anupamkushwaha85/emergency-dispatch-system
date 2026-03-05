@@ -4,6 +4,9 @@ import com.emergency.emergency108.entity.User;
 import com.emergency.emergency108.entity.UserRole;
 import com.emergency.emergency108.entity.DriverVerificationStatus;
 
+/**
+ * @author anupam kushwaha
+ */
 public class AuthResponse {
     private String token;
     private Long userId;

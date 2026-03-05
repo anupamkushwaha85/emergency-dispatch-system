@@ -5,6 +5,9 @@ import com.emergency.emergency108.repository.DomainEventRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * @author anupam kushwaha
+ */
 @Service
 public class DomainEventStore {
 

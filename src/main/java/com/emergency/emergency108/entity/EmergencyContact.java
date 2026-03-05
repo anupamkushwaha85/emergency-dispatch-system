@@ -6,6 +6,9 @@ import jakarta.persistence.*;
  * Emergency contact information for users.
  * Users can add family/friends to notify in case of emergency.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(name = "emergency_contacts")
 public class EmergencyContact {

@@ -7,6 +7,9 @@ package com.emergency.emergency108.entity;
  * ON_TRIP - Driver is currently handling an emergency
  * OFFLINE - Driver has ended shift or gone offline
  */
+/**
+ * @author anupam kushwaha
+ */
 public enum DriverSessionStatus {
     ONLINE,
     ON_TRIP,

@@ -15,6 +15,9 @@ import java.util.List;
  * Repository interface for AmbulanceLocationLog entity.
  * Handles database operations for ambulance GPS location tracking.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Repository
 public interface AmbulanceLocationLogRepository extends JpaRepository<AmbulanceLocationLog, Long> {
 

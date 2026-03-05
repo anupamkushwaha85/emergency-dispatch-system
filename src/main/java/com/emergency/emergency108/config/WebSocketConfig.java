@@ -20,6 +20,9 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  * /topic/live-locations — All driver locations (admin panel subscribes here)
  * /topic/driver/{driverId} — Per-driver channel (for targeted commands)
  */
+/**
+ * @author anupam kushwaha
+ */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {

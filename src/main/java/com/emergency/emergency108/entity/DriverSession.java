@@ -14,6 +14,9 @@ import java.time.LocalDateTime;
  * - Driver must be VERIFIED to start a session
  * - Session automatically expires after 24 hours for safety
  */
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(name = "driver_sessions", indexes = {
         @Index(name = "idx_driver_status", columnList = "driver_id, status"),

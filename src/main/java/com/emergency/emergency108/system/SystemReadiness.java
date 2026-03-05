@@ -4,6 +4,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * @author anupam kushwaha
+ */
 @Component
 public class SystemReadiness {
 

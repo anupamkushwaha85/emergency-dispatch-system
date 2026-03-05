@@ -13,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Random;
 
+/**
+ * @author anupam kushwaha
+ */
 @Service
 public class OtpService {
 

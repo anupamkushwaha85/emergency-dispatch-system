@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(name = "hospitals")
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })

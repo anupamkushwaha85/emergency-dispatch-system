@@ -1,5 +1,8 @@
 package com.emergency.emergency108.auth.dto;
 
+/**
+ * @author anupam kushwaha
+ */
 public class DriverVerificationRequest {
     private String documentUrl;
 

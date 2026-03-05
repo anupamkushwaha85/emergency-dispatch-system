@@ -4,6 +4,9 @@ import com.emergency.emergency108.repository.UserRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * @author anupam kushwaha
+ */
 @RestController
 public class HomeController {
 

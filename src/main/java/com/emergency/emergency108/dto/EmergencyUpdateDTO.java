@@ -5,6 +5,9 @@ package com.emergency.emergency108.dto;
  * Sent when an emergency is created, dispatched, accepted, completed, or
  * cancelled.
  */
+/**
+ * @author anupam kushwaha
+ */
 public class EmergencyUpdateDTO {
 
     private Long emergencyId;

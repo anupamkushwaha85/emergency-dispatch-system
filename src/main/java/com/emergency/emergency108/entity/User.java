@@ -11,6 +11,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Column;
 
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(name = "users")
 public class User {

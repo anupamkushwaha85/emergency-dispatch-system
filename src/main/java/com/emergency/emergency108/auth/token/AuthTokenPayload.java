@@ -2,6 +2,9 @@ package com.emergency.emergency108.auth.token;
 
 import com.emergency.emergency108.entity.UserRole;
 
+/**
+ * @author anupam kushwaha
+ */
 public class AuthTokenPayload {
 
     private Long userId;

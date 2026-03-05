@@ -16,6 +16,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Thread-safe: backed by ConcurrentHashMap so concurrent connect/disconnect events
  * from the broker thread pool never race.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Component
 public class StompSessionRegistry {
 

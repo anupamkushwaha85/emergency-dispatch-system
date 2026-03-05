@@ -12,6 +12,9 @@ import java.util.List;
  * Repository interface for EmergencyContact entity.
  * Handles database operations for user emergency contacts.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Repository
 public interface EmergencyContactRepository extends JpaRepository<EmergencyContact, Long> {
 

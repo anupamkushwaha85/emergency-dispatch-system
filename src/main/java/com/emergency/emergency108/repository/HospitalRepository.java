@@ -8,6 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+/**
+ * @author anupam kushwaha
+ */
 @Repository
 public interface HospitalRepository extends JpaRepository<Hospital, Long> {
 

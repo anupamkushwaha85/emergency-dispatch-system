@@ -2,6 +2,9 @@ package com.emergency.emergency108.auth.security;
 
 import com.emergency.emergency108.entity.UserRole;
 
+/**
+ * @author anupam kushwaha
+ */
 public class AuthUserPrincipal {
 
     private final Long userId;

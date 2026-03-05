@@ -1,5 +1,8 @@
 package com.emergency.emergency108.dto;
 
+/**
+ * @author anupam kushwaha
+ */
 public class DocumentUploadRequest {
 
     private String documentData;

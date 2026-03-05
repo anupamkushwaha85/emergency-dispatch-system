@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+/**
+ * @author anupam kushwaha
+ */
 public interface AmbulanceRepository extends JpaRepository<Ambulance, Long> {
 
   List<Ambulance> findByStatus(AmbulanceStatus status);

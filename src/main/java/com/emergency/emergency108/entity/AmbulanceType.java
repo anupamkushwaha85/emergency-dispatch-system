@@ -8,6 +8,9 @@ package com.emergency.emergency108.entity;
  * 
  * FUTURE: Can extend with ADVANCED_LIFE_SUPPORT, BASIC_LIFE_SUPPORT, NEONATAL, etc.
  */
+/**
+ * @author anupam kushwaha
+ */
 public enum AmbulanceType {
     GOVERNMENT,  // Free service ambulances
     PRIVATE      // Private fleet (paid)

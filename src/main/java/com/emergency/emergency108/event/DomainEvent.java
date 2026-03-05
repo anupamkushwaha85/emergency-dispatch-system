@@ -2,6 +2,9 @@ package com.emergency.emergency108.event;
 
 import java.time.LocalDateTime;
 
+/**
+ * @author anupam kushwaha
+ */
 public interface DomainEvent {
 
     /* Core identity */

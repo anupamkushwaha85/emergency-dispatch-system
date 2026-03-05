@@ -4,6 +4,9 @@ package com.emergency.emergency108.exception;
  * Exception thrown when no ambulances are available for emergency dispatch.
  * This is a business logic exception indicating resource constraint.
  */
+/**
+ * @author anupam kushwaha
+ */
 public class NoAmbulancesAvailableException extends RuntimeException {
     
     private final Long emergencyId;

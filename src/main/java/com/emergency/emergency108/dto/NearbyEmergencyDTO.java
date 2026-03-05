@@ -4,6 +4,9 @@ package com.emergency.emergency108.dto;
  * Privacy-focused DTO for Helping Hand feature.
  * Filters out sensitive data (phone, address, medical details).
  */
+/**
+ * @author anupam kushwaha
+ */
 public class NearbyEmergencyDTO {
 
     private Long id;

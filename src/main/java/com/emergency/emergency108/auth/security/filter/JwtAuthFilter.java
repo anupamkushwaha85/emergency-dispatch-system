@@ -16,6 +16,9 @@ import java.io.IOException;
 
 // @Component - DISABLED: AuthContextFilter handles full authentication with DB lookup
 // This filter was overwriting the correct principal with hardcoded false values
+/**
+ * @author anupam kushwaha
+ */
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;

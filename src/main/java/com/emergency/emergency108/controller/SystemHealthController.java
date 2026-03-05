@@ -6,6 +6,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * @author anupam kushwaha
+ */
 @RestController
 public class SystemHealthController {
 

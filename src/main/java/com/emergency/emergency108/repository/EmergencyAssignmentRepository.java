@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * @author anupam kushwaha
+ */
 public interface EmergencyAssignmentRepository
                 extends JpaRepository<EmergencyAssignment, Long> {
         boolean existsByEmergencyId(Long emergencyId);

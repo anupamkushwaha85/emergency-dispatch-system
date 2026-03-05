@@ -16,6 +16,9 @@ import java.util.Optional;
  * Repository interface for OtpCode entity.
  * Handles database operations for OTP authentication.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Repository
 public interface OtpCodeRepository extends JpaRepository<OtpCode, Long> {
 

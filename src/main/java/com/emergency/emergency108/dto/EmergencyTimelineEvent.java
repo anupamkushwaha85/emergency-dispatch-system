@@ -2,6 +2,9 @@ package com.emergency.emergency108.dto;
 
 import java.time.LocalDateTime;
 
+/**
+ * @author anupam kushwaha
+ */
 public class EmergencyTimelineEvent {
 
     private String event;

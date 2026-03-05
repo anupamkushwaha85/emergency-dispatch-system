@@ -4,6 +4,9 @@ package com.emergency.emergency108.util;
  * Utility class for geographic distance calculations.
  * Uses Haversine formula to calculate distance between two points on Earth.
  */
+/**
+ * @author anupam kushwaha
+ */
 public class DistanceCalculator {
 
     private static final double EARTH_RADIUS_METERS = 6371000; // Earth's radius in meters

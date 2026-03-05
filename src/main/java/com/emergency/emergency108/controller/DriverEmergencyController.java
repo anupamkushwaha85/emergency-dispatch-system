@@ -14,6 +14,9 @@ import java.util.Map;
  * Handles accept, reject, and viewing assigned emergencies.
  * All endpoints require VERIFIED + ONLINE driver authentication.
  */
+/**
+ * @author anupam kushwaha
+ */
 @RestController
 @RequestMapping("/api/driver/emergencies")
 public class DriverEmergencyController {

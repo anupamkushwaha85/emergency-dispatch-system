@@ -12,6 +12,9 @@ package com.emergency.emergency108.entity;
  * COMPLETED → Patient handed over to hospital
  * UNASSIGNED → No driver available or all rejected
  */
+/**
+ * @author anupam kushwaha
+ */
 public enum EmergencyStatus {
     CREATED,        // SOS received
     IN_PROGRESS,    // System processing

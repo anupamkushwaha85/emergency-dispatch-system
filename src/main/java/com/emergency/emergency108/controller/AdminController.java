@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * @author Anupam Kushwaha
+ */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {

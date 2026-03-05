@@ -15,6 +15,9 @@ package com.emergency.emergency108.entity;
  * - Payment intent tracking
  * - Automatic capture on completion
  */
+/**
+ * @author anupam kushwaha
+ */
 public enum PaymentStatus {
     NOT_REQUIRED,  // Free emergency
     PENDING,       // Payment not captured

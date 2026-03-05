@@ -2,6 +2,9 @@ package com.emergency.emergency108.event;
 
 import java.time.LocalDateTime;
 
+/**
+ * @author anupam kushwaha
+ */
 public class AssignmentEvent implements DomainEvent {
 
     private final Long emergencyId;

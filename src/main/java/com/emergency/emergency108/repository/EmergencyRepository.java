@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * @author anupam kushwaha
+ */
 public interface EmergencyRepository extends JpaRepository<Emergency, Long> {
 
         List<Emergency> findByStatus(EmergencyStatus status);

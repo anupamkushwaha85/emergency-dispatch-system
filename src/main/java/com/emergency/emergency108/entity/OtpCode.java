@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
  * OTP (One-Time Password) codes for authentication.
  * Used for phone/email verification during login/signup.
  */
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(
     name = "otp_codes",

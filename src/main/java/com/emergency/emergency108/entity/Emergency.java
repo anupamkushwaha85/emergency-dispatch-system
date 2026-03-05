@@ -5,6 +5,9 @@ import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(name = "emergencies")
 @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })

@@ -3,6 +3,9 @@ package com.emergency.emergency108.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+/**
+ * @author anupam kushwaha
+ */
 @Entity
 @Table(name = "user_locations")
 public class UserLocation {

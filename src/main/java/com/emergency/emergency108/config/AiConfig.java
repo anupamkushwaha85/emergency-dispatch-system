@@ -3,6 +3,9 @@ package com.emergency.emergency108.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * @author anupam kushwaha
+ */
 @Configuration
 public class AiConfig {
 
