@@ -3,6 +3,8 @@ package com.emergency.emergency108.repository;
 import com.emergency.emergency108.entity.Emergency;
 import com.emergency.emergency108.entity.EmergencyStatus;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,6 +47,8 @@ public interface EmergencyRepository extends JpaRepository<Emergency, Long> {
         List<Emergency> findByStatusIn(List<EmergencyStatus> statuses);
 
         List<Emergency> findByStatusNotIn(List<EmergencyStatus> statuses);
+
+        Page<Emergency> findByStatusNotIn(List<EmergencyStatus> statuses, Pageable pageable);
 
         long countByStatusNotIn(List<EmergencyStatus> statuses);
 

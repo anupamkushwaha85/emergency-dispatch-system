@@ -9,14 +9,15 @@ import com.emergency.emergency108.repository.UserRepository;
 import com.emergency.emergency108.service.HospitalService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 /**
- * REST Controller for managing Hospital endpoints.
  *
  * @author anupam kushwaha
  */
@@ -38,13 +39,16 @@ public class HospitalController {
     }
 
     /**
-     * Get all hospitals operation.
-     * @return the ResponseEntity<?>
+     * Get hospitals with pagination.
+     * GET /api/hospitals?page=0&size=20
      */
     @GetMapping
-    public ResponseEntity<?> getAllHospitals() {
+    public ResponseEntity<?> getAllHospitals(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
-            List<Hospital> hospitals = hospitalService.getAllHospitals();
+            Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("name").ascending());
+            Page<Hospital> hospitals = hospitalService.getAllHospitals(pageable);
             return ResponseEntity.ok(hospitals);
         } catch (Exception e) {
             logger.error("❌ Error fetching hospitals: {}", e.getMessage(), e);

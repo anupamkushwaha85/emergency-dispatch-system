@@ -20,6 +20,10 @@ import com.emergency.emergency108.service.DriverSessionService;
 import com.emergency.emergency108.service.EmergencyCancellationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -217,13 +221,19 @@ public class DriverController {
      * 
      * Returns all past and current sessions for analytics.
      */
+    /**
+     * Get driver's session history with pagination.
+     * GET /api/driver/history?page=0&size=10
+     */
     @GetMapping("/history")
-    public ResponseEntity<List<DriverSession>> getHistory() {
+    public ResponseEntity<Page<DriverSession>> getHistory(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "10") int size) {
         authGuard.requireVerifiedDriver();
 
         Long driverId = AuthContext.get().getUserId();
-
-        List<DriverSession> history = sessionService.getDriverHistory(driverId);
+        Pageable pageable = PageRequest.of(page, Math.min(size, 50), Sort.by("sessionStartTime").descending());
+        Page<DriverSession> history = sessionService.getDriverHistory(driverId, pageable);
 
         return ResponseEntity.ok(history);
     }

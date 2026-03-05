@@ -70,6 +70,17 @@ Real-time driver location updates are streamed over **WebSockets (STOMP)**, push
 - 📊 **Prometheus Metrics**
   - Exposed at `/actuator/prometheus`; tracks accepted/rejected/timeout counts
 
+- 🛡️ **Per-IP Rate Limiting**
+  - Fixed-window rate limiter (no external dependency — pure Java)
+  - OTP send: **5 req/min**, OTP verify: **10 req/min**, General: **60 req/min**
+  - Returns `HTTP 429` with `Retry-After: 60` header on breach
+
+- 📄 **Pagination on List Endpoints**
+  - `GET /api/ambulances`, `/api/hospitals`, `/api/admin/pending-drivers`,
+    `/api/admin/verified-drivers`, `/api/admin/active-emergencies`, `/api/driver/history`
+  - Accept `?page=0&size=20` query params; respond with Spring `Page<T>` envelope
+    (`content`, `totalElements`, `totalPages`, `page`, `size`)
+
 - 🧠 **System Readiness Guard**
   - Blocks API requests while recovery or initialization is in progress
 
@@ -396,6 +407,45 @@ A `callSpringAi()` stub is already present in `AiAssistanceService` and wired in
 **🔮 Planned: LLM Integration**
 
 > The rule-based engine is the stable foundation. In a future release, the `app.ai.provider` will be switched to a large language model (e.g. via **Spring AI** with OpenAI / Gemini / a self-hosted model) for richer, context-aware guidance — including multi-turn triage conversations, dynamic severity re-assessment during the emergency, and language-localised instructions. The fallback to the rule engine will remain as a safety net so the system never has zero AI capability.
+
+---
+
+### 🛡️ Rate Limiting
+
+All `/api/**` routes are protected by a **per-IP fixed-window rate limiter** implemented as a Spring `HandlerInterceptor`. No external dependency is needed — it uses `ConcurrentHashMap` + `AtomicInteger` for thread-safe, zero-allocation counters.
+
+| Tier | Endpoint | Limit |
+|---|---|---|
+| OTP send | `POST /api/auth/send-otp` | 5 req / minute |
+| OTP verify | `POST /api/auth/verify-otp` | 10 req / minute |
+| General | All other `/api/**` | 60 req / minute |
+
+When a bucket is exhausted the server returns `HTTP 429 Too Many Requests` with a `Retry-After: 60` header. The real client IP is resolved from `X-Forwarded-For` / `X-Real-IP` headers to work correctly behind Render's reverse proxy.
+
+---
+
+### 📄 Pagination
+
+All list endpoints that could grow unboundedly now support standard Spring pagination via `?page=` and `?size=` query parameters. The response envelope follows the Spring `Page<T>` format:
+
+```json
+{
+  "content": [ ... ],
+  "totalElements": 142,
+  "totalPages": 8,
+  "page": 0,
+  "size": 20
+}
+```
+
+| Endpoint | Default size | Max size |
+|---|---|---|
+| `GET /api/ambulances` | 20 | 100 |
+| `GET /api/hospitals` | 20 | 100 |
+| `GET /api/admin/pending-drivers` | 20 | 100 |
+| `GET /api/admin/verified-drivers` | 20 | 100 |
+| `GET /api/admin/active-emergencies` | 50 | 200 |
+| `GET /api/driver/history` | 10 | 50 |
 
 ---
 

@@ -17,6 +17,10 @@ import com.emergency.emergency108.service.DriverSessionService;
 import com.emergency.emergency108.service.EmergencyCancellationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,11 +61,14 @@ public class AdminController {
     }
 
     /**
-     * Get all pending driver verifications
-     * GET /api/admin/pending-drivers
+     * Get pending driver verifications with pagination.
+     * GET /api/admin/pending-drivers?page=0&size=20
      */
     @GetMapping("/pending-drivers")
-    public ResponseEntity<?> getPendingDrivers(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getPendingDrivers(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
             // Validate admin token
             String token = authHeader.replace("Bearer ", "");
@@ -75,12 +82,12 @@ public class AdminController {
                         .body("Only admins can view pending driver verifications");
             }
 
-            // Fetch all pending drivers
-            List<User> pendingDrivers = userRepository.findByRoleAndDriverVerificationStatus(
-                    UserRole.DRIVER, DriverVerificationStatus.PENDING);
+            Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("createdAt").descending());
+            Page<User> pendingPage = userRepository.findByRoleAndDriverVerificationStatus(
+                    UserRole.DRIVER, DriverVerificationStatus.PENDING, pageable);
 
             // Map to response
-            List<Map<String, Object>> driverList = pendingDrivers.stream()
+            List<Map<String, Object>> driverList = pendingPage.getContent().stream()
                     .map(driver -> {
                         Map<String, Object> driverInfo = new HashMap<>();
                         driverInfo.put("id", driver.getId());
@@ -95,11 +102,15 @@ public class AdminController {
                     })
                     .collect(Collectors.toList());
 
-            logger.info("✅ Admin {} fetched {} pending drivers", admin.getId(), driverList.size());
+            logger.info("✅ Admin {} fetched {} pending drivers (page {}/{})",
+                    admin.getId(), driverList.size(), page, pendingPage.getTotalPages());
 
             Map<String, Object> response = new HashMap<>();
-            response.put("totalPending", driverList.size());
-            response.put("drivers", driverList);
+            response.put("content", driverList);
+            response.put("page", pendingPage.getNumber());
+            response.put("size", pendingPage.getSize());
+            response.put("totalElements", pendingPage.getTotalElements());
+            response.put("totalPages", pendingPage.getTotalPages());
 
             return ResponseEntity.ok(response);
 
@@ -224,11 +235,14 @@ public class AdminController {
     }
 
     /**
-     * Get all verified drivers for assignment
-     * GET /api/admin/verified-drivers
+     * Get all verified drivers for assignment with pagination.
+     * GET /api/admin/verified-drivers?page=0&size=20
      */
     @GetMapping("/verified-drivers")
-    public ResponseEntity<?> getVerifiedDrivers(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getVerifiedDrivers(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
         try {
             String token = authHeader.replace("Bearer ", "");
             AuthTokenPayload payload = tokenService.validateAndParse(token);
@@ -241,10 +255,11 @@ public class AdminController {
                         .body("Only admins can view verified drivers");
             }
 
-            List<User> verifiedDrivers = userRepository.findByRoleAndDriverVerificationStatus(
-                    UserRole.DRIVER, DriverVerificationStatus.VERIFIED);
+            Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("name").ascending());
+            Page<User> verifiedPage = userRepository.findByRoleAndDriverVerificationStatus(
+                    UserRole.DRIVER, DriverVerificationStatus.VERIFIED, pageable);
 
-            List<Map<String, Object>> drivers = verifiedDrivers.stream()
+            List<Map<String, Object>> drivers = verifiedPage.getContent().stream()
                     .map(d -> {
                         Map<String, Object> map = new HashMap<>();
                         map.put("id", d.getId());
@@ -255,7 +270,14 @@ public class AdminController {
                     })
                     .collect(Collectors.toList());
 
-            return ResponseEntity.ok(drivers);
+            Map<String, Object> response = new HashMap<>();
+            response.put("content", drivers);
+            response.put("page", verifiedPage.getNumber());
+            response.put("size", verifiedPage.getSize());
+            response.put("totalElements", verifiedPage.getTotalElements());
+            response.put("totalPages", verifiedPage.getTotalPages());
+
+            return ResponseEntity.ok(response);
 
         } catch (RuntimeException e) {
             logger.error("❌ Error fetching verified drivers: {}", e.getMessage());
@@ -392,26 +414,26 @@ public class AdminController {
     }
 
     /**
-     * Get Active Emergencies for Live Map
-     * GET /api/admin/active-emergencies
+     * Get Active Emergencies for Live Map with pagination.
+     * GET /api/admin/active-emergencies?page=0&size=50
      */
     @GetMapping("/active-emergencies")
-    public ResponseEntity<?> getActiveEmergencies(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<?> getActiveEmergencies(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "50") int size) {
         try {
             String token = authHeader.replace("Bearer ", "");
             AuthTokenPayload payload = tokenService.validateAndParse(token);
 
-            // Validate admin (optional, assuming map is admin only)
             userRepository.findById(payload.getUserId())
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             java.util.List<EmergencyStatus> inactiveStatuses = java.util.Arrays.asList(
                     EmergencyStatus.COMPLETED, EmergencyStatus.CANCELLED);
-            List<Emergency> active = emergencyRepository.findByStatusNotIn(inactiveStatuses);
 
-            // Note: Enum has CREATED, IN_PROGRESS, DISPATCHED, AT_PATIENT, TO_HOSPITAL,
-            // COMPLETED, CANCELLED, UNASSIGNED
-            // We want all except COMPLETED and CANCELLED.
+            Pageable pageable = PageRequest.of(page, Math.min(size, 200), Sort.by("id").descending());
+            Page<Emergency> active = emergencyRepository.findByStatusNotIn(inactiveStatuses, pageable);
 
             return ResponseEntity.ok(active);
 

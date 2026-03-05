@@ -8,12 +8,15 @@ import com.emergency.emergency108.entity.User;
 import com.emergency.emergency108.entity.UserRole;
 import com.emergency.emergency108.repository.AmbulanceRepository;
 import com.emergency.emergency108.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,12 +41,16 @@ public class AmbulanceController {
     }
 
     /**
-     * Get all ambulances operation.
-     * @return the List<Ambulance>
+     * Get all ambulances with optional pagination.
+     * Query params: page (default 0), size (default 20), sort (default id,asc)
+     * GET /api/ambulances?page=0&size=20
      */
     @GetMapping
-    public List<Ambulance> getAllAmbulances() {
-        return ambulanceRepository.findAll();
+    public Page<Ambulance> getAllAmbulances(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("id").ascending());
+        return ambulanceRepository.findAll(pageable);
     }
 
     /**

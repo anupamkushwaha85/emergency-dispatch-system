@@ -2,6 +2,8 @@ package com.emergency.emergency108.repository;
 
 import com.emergency.emergency108.entity.DriverSession;
 import com.emergency.emergency108.entity.DriverSessionStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -144,6 +146,13 @@ public interface DriverSessionRepository extends JpaRepository<DriverSession, Lo
        @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
                      "ORDER BY ds.sessionStartTime DESC")
        List<DriverSession> findAllByDriverId(@Param("driverId") Long driverId);
+
+       /**
+        * Find sessions for a driver with pagination (history)
+        */
+       @Query("SELECT ds FROM DriverSession ds WHERE ds.driverId = :driverId " +
+                     "ORDER BY ds.sessionStartTime DESC")
+       Page<DriverSession> findHistoryByDriverId(@Param("driverId") Long driverId, Pageable pageable);
 
        /**
         * Find all active sessions (ONLINE or ON_TRIP) for stale detection

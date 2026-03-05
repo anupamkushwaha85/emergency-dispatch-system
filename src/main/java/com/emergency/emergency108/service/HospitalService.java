@@ -2,6 +2,8 @@ package com.emergency.emergency108.service;
 
 import com.emergency.emergency108.entity.Hospital;
 import com.emergency.emergency108.repository.HospitalRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +30,11 @@ public class HospitalService {
     @Transactional(readOnly = true)
     public List<Hospital> getAllHospitals() {
         return hospitalRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Hospital> getAllHospitals(Pageable pageable) {
+        return hospitalRepository.findAll(pageable);
     }
 
     /**
