@@ -269,6 +269,50 @@ Emergency saved (status=CREATED, emergencyFor=UNKNOWN)
 
 ---
 
+### 📞 Emergency Contacts — Automatic Family Alerts
+
+Every user can pre-register trusted contacts (family/friends) who are automatically alerted the moment an emergency is confirmed as `SELF`.
+
+**How it works:**
+
+```
+User pre-registers contacts (name, phone, relationship)
+  stored in: EmergencyContact entity
+        │
+        ▼
+Emergency created & ownership set to SELF
+        │
+        ▼
+NotificationService.notifyContacts() triggered immediately
+        │
+        ▼
+Looks up all contacts for the victim's userId
+  → Sends mock SMS alert to up to 3 contacts:
+    "[MOCK SMS] EMERGENCY ALERT! Your contact has reported an urgency.
+     Location: {lat}, {lng}"
+        │
+        ▼
+Emergency.contactNotificationStatus → NOTIFIED
+```
+
+**Contact fields stored per user:**
+
+| Field | Description |
+|---|---|
+| `name` | Contact person's full name |
+| `phone` | Phone number |
+| `relation` | Relationship (SPOUSE, PARENT, CHILD, SIBLING, FRIEND, etc.) |
+
+**Key rules:**
+- Maximum **3 contacts** notified per emergency (avoids alert fatigue)
+- Only triggered for `emergencyFor = SELF` — skipped entirely for `OTHER`
+- If no contacts are registered the emergency still proceeds normally — notification status is marked `NOTIFIED` (no-op)
+- SMS is currently **mock** (logged to console); plugging in a real SMS provider (Twilio / AWS SNS) requires only a one-line change in `NotificationService`
+
+> **Note:** The emergency contact CRUD API (add/list/delete contacts) is backend-ready via `EmergencyContactRepository` — the management endpoints are planned for the next release.
+
+---
+
 ### 🤝 Helping Hand — Community First Responder Network
 
 Helping Hand is an opt-in feature that turns nearby users into community first responders. Users who enable it share their background location and receive alerts when an emergency happens close to them.
