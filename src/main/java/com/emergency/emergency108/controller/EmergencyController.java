@@ -56,6 +56,7 @@ public class EmergencyController {
     private final FCMNotificationService fcmNotificationService;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TrackingBroadcastService trackingBroadcastService;
 
     public EmergencyController(EmergencyRepository emergencyRepository,
             EmergencyDispatchService emergencyDispatchService,
@@ -73,7 +74,8 @@ public class EmergencyController {
             HelpingHandService helpingHandService,
             FCMNotificationService fcmNotificationService,
             UserRepository userRepository,
-            SimpMessagingTemplate messagingTemplate) {
+            SimpMessagingTemplate messagingTemplate,
+            TrackingBroadcastService trackingBroadcastService) {
         this.emergencyDispatchService = emergencyDispatchService;
         this.authGuard = authGuard;
         this.metrics = metrics;
@@ -92,6 +94,7 @@ public class EmergencyController {
         this.fcmNotificationService = fcmNotificationService;
         this.userRepository = userRepository;
         this.messagingTemplate = messagingTemplate;
+        this.trackingBroadcastService = trackingBroadcastService;
     }
 
     /**
@@ -326,6 +329,8 @@ public class EmergencyController {
 
             // Broadcast arrival status
             broadcastEmergencyUpdate(emergency, driverId, "EMERGENCY_AT_PATIENT");
+            // Push updated tracking payload to patient app STOMP subscription
+            trackingBroadcastService.broadcastForEmergency(id);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Arrival at patient location recorded",

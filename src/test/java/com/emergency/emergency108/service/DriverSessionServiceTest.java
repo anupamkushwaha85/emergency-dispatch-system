@@ -39,6 +39,9 @@ class DriverSessionServiceTest {
     @Mock
     private SimpMessagingTemplate messagingTemplate;
 
+    @Mock
+    private TrackingBroadcastService trackingBroadcastService;
+
     private DomainMetrics metrics;
     private DriverSessionService sessionService;
 
@@ -50,7 +53,7 @@ class DriverSessionServiceTest {
     void setUp() {
         metrics = new DomainMetrics(new SimpleMeterRegistry());
         sessionService = new DriverSessionService(sessionRepository, userRepository, ambulanceRepository, metrics,
-                messagingTemplate);
+                messagingTemplate, trackingBroadcastService);
 
         driver = new User();
         driver.setId(100L);

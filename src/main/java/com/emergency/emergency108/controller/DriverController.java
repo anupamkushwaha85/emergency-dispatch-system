@@ -18,6 +18,7 @@ import com.emergency.emergency108.repository.EmergencyRepository;
 import com.emergency.emergency108.repository.HospitalRepository;
 import com.emergency.emergency108.service.DriverSessionService;
 import com.emergency.emergency108.service.EmergencyCancellationService;
+import com.emergency.emergency108.service.TrackingBroadcastService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -56,6 +57,7 @@ public class DriverController {
     private final EmergencyRepository emergencyRepository;
     private final AmbulanceRepository ambulanceRepository;
     private final EmergencyCancellationService cancellationService;
+    private final TrackingBroadcastService trackingBroadcastService;
 
     public DriverController(
             DriverSessionService sessionService,
@@ -64,7 +66,8 @@ public class DriverController {
             EmergencyAssignmentRepository assignmentRepository,
             EmergencyRepository emergencyRepository,
             AmbulanceRepository ambulanceRepository,
-            EmergencyCancellationService cancellationService) {
+            EmergencyCancellationService cancellationService,
+            TrackingBroadcastService trackingBroadcastService) {
         this.sessionService = sessionService;
         this.authGuard = authGuard;
         this.hospitalRepository = hospitalRepository;
@@ -72,6 +75,7 @@ public class DriverController {
         this.emergencyRepository = emergencyRepository;
         this.ambulanceRepository = ambulanceRepository;
         this.cancellationService = cancellationService;
+        this.trackingBroadcastService = trackingBroadcastService;
     }
 
     /**
@@ -304,6 +308,9 @@ public class DriverController {
             log.info("Driver {}: Picked up patient for emergency {}. Routing to Hospital {}.",
                     AuthContext.getUserId(), emergencyId, nearestHospital.getName());
 
+            // Broadcast to patient STOMP subscription so tracking view updates instantly
+            trackingBroadcastService.broadcastForEmergency(emergencyId);
+
             return ResponseEntity.ok(Map.of(
                     "message", "Patient picked up, heading to hospital",
                     "hospital", Map.of(
@@ -451,6 +458,9 @@ public class DriverController {
 
             log.info("Driver {}: Completed mission for emergency {} at hospital {}.",
                     driverId, emergencyId, hospital.getName());
+
+            // Broadcast COMPLETED to patient STOMP subscription before they see the dialog
+            trackingBroadcastService.broadcastForEmergency(emergencyId);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Mission completed successfully. Emergency closed.",

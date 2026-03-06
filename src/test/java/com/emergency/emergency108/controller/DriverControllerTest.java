@@ -14,6 +14,7 @@ import com.emergency.emergency108.repository.HospitalRepository;
 import com.emergency.emergency108.repository.UserRepository;
 import com.emergency.emergency108.service.DriverSessionService;
 import com.emergency.emergency108.service.EmergencyCancellationService;
+import com.emergency.emergency108.service.TrackingBroadcastService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +64,8 @@ class DriverControllerTest {
     private AmbulanceRepository ambulanceRepository;
     @MockBean
     private EmergencyCancellationService cancellationService;
+    @MockBean
+    private TrackingBroadcastService trackingBroadcastService;
     @MockBean
     private TokenService tokenService;
     @MockBean

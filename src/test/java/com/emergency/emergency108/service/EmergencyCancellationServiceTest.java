@@ -62,7 +62,7 @@ class EmergencyCancellationServiceTest {
     // Stub class for DriverSessionService
     static class DriverSessionServiceStub extends DriverSessionService {
         public DriverSessionServiceStub() {
-            super(null, null, null, null, null); // 5th arg: SimpMessagingTemplate (not used by stub)
+            super(null, null, null, null, null, null); // last arg: TrackingBroadcastService (not used by stub)
         }
 
         @Override

@@ -43,18 +43,21 @@ public class DriverSessionService {
     private final AmbulanceRepository ambulanceRepository;
     private final DomainMetrics metrics;
     private final SimpMessagingTemplate messagingTemplate;
+    private final TrackingBroadcastService trackingBroadcastService;
 
     public DriverSessionService(
             DriverSessionRepository sessionRepository,
             UserRepository userRepository,
             AmbulanceRepository ambulanceRepository,
             DomainMetrics metrics,
-            SimpMessagingTemplate messagingTemplate) {
+            SimpMessagingTemplate messagingTemplate,
+            TrackingBroadcastService trackingBroadcastService) {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
         this.ambulanceRepository = ambulanceRepository;
         this.metrics = metrics;
         this.messagingTemplate = messagingTemplate;
+        this.trackingBroadcastService = trackingBroadcastService;
     }
 
     /**
@@ -265,6 +268,10 @@ public class DriverSessionService {
 
         // Per-driver feed — for future use (e.g. user tracking their own ambulance)
         messagingTemplate.convertAndSend("/topic/driver/" + driverId, locationUpdate);
+
+        // Patient tracking broadcast — replaces HTTP polling in Flutter patient app.
+        // Fires only when driver is on active trip (ACCEPTED assignment); a no-op otherwise.
+        trackingBroadcastService.broadcastForDriver(driverId, lat, lng);
         // ──────────────────────────────────────────────────────────────────────
     }
 

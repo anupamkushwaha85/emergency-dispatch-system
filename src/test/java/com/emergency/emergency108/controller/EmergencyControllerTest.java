@@ -87,6 +87,9 @@ class EmergencyControllerTest {
     @MockBean
     private SimpMessagingTemplate messagingTemplate;
 
+    @MockBean
+    private TrackingBroadcastService trackingBroadcastService;
+
     @BeforeEach
     void setUp() {
         // Assume auth passes
