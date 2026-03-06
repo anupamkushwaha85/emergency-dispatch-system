@@ -185,6 +185,10 @@ public class EmergencyDispatchService {
                 emergencyMap.put("longitude", emergency.getLongitude());
                 emergencyMap.put("userId", emergency.getUserId());
                 emergencyMap.put("status", emergency.getStatus().name());
+                // Include patient name + phone so driver can call to confirm
+                User patientUser = userRepository.findById(emergency.getUserId()).orElse(null);
+                emergencyMap.put("patientName", patientUser != null ? patientUser.getName() : null);
+                emergencyMap.put("patientPhone", patientUser != null ? patientUser.getPhone() : null);
                 assignmentPayload.put("emergency", emergencyMap);
                 assignmentPayload.put("status", "ASSIGNED");
 

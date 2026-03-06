@@ -1,12 +1,16 @@
 package com.emergency.emergency108.controller;
 
 import com.emergency.emergency108.auth.security.AuthContext;
+import com.emergency.emergency108.entity.Emergency;
 import com.emergency.emergency108.entity.EmergencyAssignment;
+import com.emergency.emergency108.entity.User;
+import com.emergency.emergency108.repository.UserRepository;
 import com.emergency.emergency108.service.EmergencyAssignmentService;
 import com.emergency.emergency108.service.EmergencyAuthorizationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -25,12 +29,15 @@ public class DriverEmergencyController {
 
     private final EmergencyAssignmentService assignmentService;
     private final EmergencyAuthorizationService authorizationService;
+    private final UserRepository userRepository;
 
     public DriverEmergencyController(
             EmergencyAssignmentService assignmentService,
-            EmergencyAuthorizationService authorizationService) {
+            EmergencyAuthorizationService authorizationService,
+            UserRepository userRepository) {
         this.assignmentService = assignmentService;
         this.authorizationService = authorizationService;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -137,14 +144,27 @@ public class DriverEmergencyController {
                 ));
             }
 
-            return ResponseEntity.ok(Map.of(
-                    "assigned", true,
-                    "assignment", assignment,
-                    "emergency", assignment.getEmergency(),
-                    "status", assignment.getStatus(),
-                    "assignedAt", assignment.getAssignedAt(),
-                    "responseDeadline", assignment.getResponseDeadline()
-            ));
+            Emergency emergency = assignment.getEmergency();
+            // Look up patient details so driver can call for confirmation
+            User patientUser = userRepository.findById(emergency.getUserId()).orElse(null);
+            Map<String, Object> emergencyInfo = new HashMap<>();
+            emergencyInfo.put("id", emergency.getId());
+            emergencyInfo.put("type", emergency.getType());
+            emergencyInfo.put("severity", emergency.getSeverity());
+            emergencyInfo.put("latitude", emergency.getLatitude());
+            emergencyInfo.put("longitude", emergency.getLongitude());
+            emergencyInfo.put("userId", emergency.getUserId());
+            emergencyInfo.put("status", emergency.getStatus().name());
+            emergencyInfo.put("patientName", patientUser != null ? patientUser.getName() : null);
+            emergencyInfo.put("patientPhone", patientUser != null ? patientUser.getPhone() : null);
+            Map<String, Object> result = new HashMap<>();
+            result.put("assigned", true);
+            result.put("assignment", assignment);
+            result.put("emergency", emergencyInfo);
+            result.put("status", assignment.getStatus());
+            result.put("assignedAt", assignment.getAssignedAt());
+            result.put("responseDeadline", assignment.getResponseDeadline());
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Internal Error",
