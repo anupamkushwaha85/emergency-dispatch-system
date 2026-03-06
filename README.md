@@ -610,6 +610,7 @@ I am a B.Tech CSE student passionate about building scalable Java applications.
 
 [![Email](https://img.shields.io/badge/Email-anupamkushwaha639%40gmail.com-red?style=flat-square&logo=gmail)](mailto:anupamkushwaha639@gmail.com)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-anupamkushwaha85-blue?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/anupamkushwaha85/)
+[![Portfolio](https://img.shields.io/badge/Portfolio-anupamkushwaha.me-brightgreen?style=flat-square&logo=google-chrome&logoColor=white)](https://anupamkushwaha.me)
 
 ---
 
