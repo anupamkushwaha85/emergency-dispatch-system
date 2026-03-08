@@ -69,9 +69,11 @@ public class OtpService {
         String userOtp = System.getenv("MAGIC_OTP_USER");
         String driverOtp = System.getenv("MAGIC_OTP_DRIVER");
 
+        String adminPhone = System.getenv("MAGIC_ADMIN_PHONE");
         // 1. Specific Admin User (High Priority)
-        // If phone is 9090221043, check env var first, otherwise default to 123456
-        if ("9090221043".equals(user.getPhone())) {
+        // If phone is matches MAGIC_ADMIN_PHONE, check env var first, otherwise default
+        // to 123456
+        if (adminPhone != null && adminPhone.equals(user.getPhone())) {
             if (adminOtp != null && !adminOtp.isBlank()) {
                 return adminOtp;
             }
@@ -118,9 +120,10 @@ public class OtpService {
 
         // ADMIN-specific validation
         if (user.getRole() == UserRole.ADMIN) {
+            String adminPhone = System.getenv("MAGIC_ADMIN_PHONE");
             // Bypass passkey check for Magic Admin to allow frontend login without passkey
             // field
-            if ("9090221043".equals(user.getPhone())) {
+            if (adminPhone != null && adminPhone.equals(user.getPhone())) {
                 logger.info("🪄 Skipping admin passkey check for Magic Admin: {}", phone);
             } else {
                 if (adminPasskey == null || adminPasskey.isEmpty()) {
