@@ -30,6 +30,14 @@ The system handles **automatic ambulance assignment, driver accept/reject flows,
 
 Real-time driver location updates are streamed over **WebSockets (STOMP)**, push alerts are delivered to drivers and users via **Firebase Cloud Messaging (FCM)**, and all APIs are authenticated using **OTP-based JWT auth**.
 
+### 🔗 Related Repositories & Links
+
+| Component | Link |
+|---|---|
+| 📱 Flutter Mobile App | [emergency108](https://github.com/anupamkushwaha85/emergency108) |
+| 🖥️ Admin Panel (React) | [emergency-dispatch-admin-panel](https://github.com/anupamkushwaha85/emergency-dispatch-admin-panel) |
+| 🌐 Admin Panel Live Demo | [emergency-dispatch-admin-panel.vercel.app](https://emergency-dispatch-admin-panel.vercel.app/) |
+
 ---
 
 ## ✨ Key Features
