@@ -40,4 +40,16 @@ public class HelpingHandController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Fetch nearby emergencies for the logged-in helper.
+     */
+    @GetMapping("/nearby")
+    public ResponseEntity<List<NearbyEmergencyDTO>> getNearbyEmergencies(
+            @RequestParam(defaultValue = "3.0") double radiusKm) {
+        authGuard.requireAuthenticated();
+        Long userId = AuthContext.getUserId();
+        List<NearbyEmergencyDTO> list = helpingHandService.getNearbyEmergencies(userId, radiusKm);
+        return ResponseEntity.ok(list);
+    }
+
 }
