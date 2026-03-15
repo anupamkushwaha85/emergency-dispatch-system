@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -198,6 +199,12 @@ public class EmergencyController {
         authGuard.requireAuthenticated();
         Long userId = AuthContext.getUserId();
 
+        if (emergencyRepository.existsByUserIdAndStatusIn(userId, getActiveStatuses())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "You already have an active emergency. Please complete or cancel it before creating another.");
+        }
+
         emergency.setStatus(EmergencyStatus.CREATED);
         emergency.setUserId(userId);
 
@@ -243,6 +250,43 @@ public class EmergencyController {
         }
 
         return savedEmergency;
+    }
+
+    /**
+     * Returns latest active emergency for authenticated user.
+     * Used by mobile app to restore state after app kill/reopen.
+     */
+    @GetMapping("/my-active")
+    public ResponseEntity<?> getMyActiveEmergency() {
+        authGuard.requireAuthenticated();
+        Long userId = AuthContext.getUserId();
+
+        Optional<Emergency> active = emergencyRepository
+                .findTopByUserIdAndStatusInOrderByCreatedAtDesc(userId, getActiveStatuses());
+
+        if (active.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        Emergency e = active.get();
+        return ResponseEntity.ok(Map.of(
+                "id", e.getId(),
+                "status", e.getStatus().name(),
+                "emergencyFor", e.getEmergencyFor().name(),
+                "contactNotificationStatus", e.getContactNotificationStatus().name(),
+                "createdAt", e.getCreatedAt() != null ? e.getCreatedAt().toString() : "",
+                "latitude", e.getLatitude(),
+                "longitude", e.getLongitude()));
+    }
+
+    private List<EmergencyStatus> getActiveStatuses() {
+        return Arrays.asList(
+                EmergencyStatus.CREATED,
+                EmergencyStatus.DISPATCHED,
+                EmergencyStatus.IN_PROGRESS,
+                EmergencyStatus.AT_PATIENT,
+                EmergencyStatus.TO_HOSPITAL,
+                EmergencyStatus.UNASSIGNED);
     }
 
     /**

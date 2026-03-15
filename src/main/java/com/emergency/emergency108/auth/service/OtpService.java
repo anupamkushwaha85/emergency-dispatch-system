@@ -40,7 +40,8 @@ public class OtpService {
 
         // Find or create user
         User user = userRepository.findByPhone(phone)
-                .orElseGet(() -> createNewUser(phone, role));
+            .map(existing -> applyRequestedRoleTransition(existing, role))
+            .orElseGet(() -> createNewUser(phone, role));
 
         // Generate 6-digit OTP
         String otp = getMagicOtp(user);
@@ -62,6 +63,17 @@ public class OtpService {
         }
 
         return otp; // Remove this in production! Only for testing
+    }
+
+    private User applyRequestedRoleTransition(User user, UserRole requestedRole) {
+        // Allow PUBLIC -> DRIVER upgrade for onboarding using the same phone.
+        if (requestedRole == UserRole.DRIVER && user.getRole() == UserRole.PUBLIC) {
+            user.setRole(UserRole.DRIVER);
+            user.setDriverVerificationStatus(DriverVerificationStatus.PENDING);
+            user.setProfileComplete(true); // Driver flow does not require public profile setup.
+            logger.info("🔄 Upgraded user {} from PUBLIC to DRIVER during OTP request", user.getId());
+        }
+        return user;
     }
 
     private String getMagicOtp(User user) {

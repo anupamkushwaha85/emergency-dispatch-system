@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * @author anupam kushwaha
@@ -51,5 +52,9 @@ public interface EmergencyRepository extends JpaRepository<Emergency, Long> {
         Page<Emergency> findByStatusNotIn(List<EmergencyStatus> statuses, Pageable pageable);
 
         long countByStatusNotIn(List<EmergencyStatus> statuses);
+
+        boolean existsByUserIdAndStatusIn(Long userId, List<EmergencyStatus> statuses);
+
+        Optional<Emergency> findTopByUserIdAndStatusInOrderByCreatedAtDesc(Long userId, List<EmergencyStatus> statuses);
 
 }
