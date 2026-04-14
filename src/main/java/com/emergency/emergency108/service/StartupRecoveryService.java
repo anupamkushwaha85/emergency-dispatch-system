@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.List;
 
 /**
@@ -99,11 +100,12 @@ public class StartupRecoveryService {
         for (Ambulance ambulance : busy) {
             boolean hasActive =
                     assignmentRepository
-                            .findByEmergencyId(ambulance.getId())
-                            .stream()
-                            .anyMatch(a ->
-                                    a.getStatus() == EmergencyAssignmentStatus.ASSIGNED ||
-                                            a.getStatus() == EmergencyAssignmentStatus.ACCEPTED
+                            .existsByAmbulanceIdAndStatusIn(
+                                    ambulance.getId(),
+                                    EnumSet.of(
+                                            EmergencyAssignmentStatus.ASSIGNED,
+                                            EmergencyAssignmentStatus.ACCEPTED
+                                    )
                             );
 
             if (!hasActive) {
